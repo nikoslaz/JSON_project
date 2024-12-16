@@ -2,19 +2,20 @@
 
 using namespace std;
 
+#define JSON(name) JsonValue name
+#define STRING(value) string(value)
+#define NUMBER(value) double(value)
+#define TRUE true
+#define FALSE false
+#define NULLVALUE nullptr
+#define OBJECT JsonObject{};
+#define ARRAY JsonArray
+#define KEY(key) key
+
 int main() {
-    // Define JSON variables
-    JSON(book) = OBJECT{
-        {KEY("title"), STRING("Gone Girl")},
-        {KEY("published"), NUMBER(2012)},
-        {KEY("type"), STRING("Thriller")},
-        {KEY("author"), OBJECT{
-            {KEY("firstname"), STRING("Gillian")},
-            {KEY("sirname"), STRING("Flynn")},
-            {KEY("age"), NUMBER(45)}
-        }}
-    };
- 
     
+    JSON(emptyObj) = OBJECT{}
+
+
     return 0;
 }

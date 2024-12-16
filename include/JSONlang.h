@@ -1,16 +1,15 @@
 #ifndef JSONLANG.H
 #define JSONLANG.H
 
-#define JSON(name) JsonValue name
-#define STRING(value) std::string(value)
-#define NUMBER(value) 
-#define TRUE true
-#define FALSE false
-#define NULLVALUE nullptr
-#define OBJECT JsonObject
-#define ARRAY JsonArray
-#define KEY(key) key
-
+// #define JSON(name) JsonValue name
+// #define STRING(value) sstring(value)
+// #define NUMBER(value) double(value)
+// #define TRUE true
+// #define FALSE false
+// #define NULLVALUE nullptr
+// #define OBJECT JsonObject{{}}
+// #define ARRAY JsonArray{}
+// #define KEY(key) key
 
 #include <iostream>
 #include <vector>
@@ -21,18 +20,34 @@
 using namespace std;
 
 /* Map of key-value pairs */
-struct JsonObject;
+struct JsonObject {
+    map<string, JsonValue> values;
+
+    JsonValue& operator[](const string& key) {
+        return values[key];
+    }
+};
 
 /* Vector of JSON values */
-struct JsonArray;
+struct JsonArray {
+    vector<JsonValue> values;
+
+    JsonValue& operator[](size_t index) {
+        return values.at(index);
+    }
+
+    void append(const JsonValue& value) {
+        values.push_back(value);
+    }
+};
 
 /* Define types for JSON values */
 typedef variant<string, double, bool, nullptr_t, struct JsonObject, struct JsonArray> JsonValue;
 
 template<typename... Args>
 void PRINT(Args... args) {
-    ((std::cout << args << " "), ...);
-    std::cout << std::endl;
+    ((cout << args << " "), ...);
+    cout << std:: endl;
 }
 
 #endif //JSONLANG.H
