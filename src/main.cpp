@@ -1,21 +1,10 @@
 #include "../include/JSONlang.h"
 
-using namespace std;
-
-#define JSON(name) JsonValue name
-#define STRING(value) string(value)
-#define NUMBER(value) double(value)
-#define TRUE true
-#define FALSE false
-#define NULLVALUE nullptr
-#define OBJECT JsonObject{};
-#define ARRAY JsonArray
-#define KEY(key) key
+#define JSON(name) JsonValue
 
 int main() {
-    
-    JSON(emptyObj) = OBJECT{}
 
+    JSON(name) = value
 
     return 0;
 }
