@@ -74,6 +74,11 @@ public:
         return *this;
     }
 
+    JsonValue& operator=(const JsonObject& node) {
+            object = node;
+        return *this;
+    }
+
     // Member functions
     bool isValue() const {
         return type == JsonType::BOOL || type == JsonType::NUMBER || type == JsonType::STRING || type == JsonType::NULLT;
