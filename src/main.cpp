@@ -1,10 +1,18 @@
 #include "../include/JSONlang.h"
 
-#define JSON(name) JsonValue
+JsonObject object;
+JsonArray  array;
+
+#define JSON(name) JsonValue name
+
+#define STRING(value) value;
+#define NUMBER(value) value;
+#define KEY(value) #value
+#define OBJECT JsonObject{};
+
 
 int main() {
 
-    JSON(name) = value
 
     return 0;
 }
