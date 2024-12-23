@@ -1,15 +1,17 @@
-#ifndef JSONLANG.H
-#define JSONLANG.H
+#ifndef JSONLANG_H
+#define JSONLANG_H
 
 #include <iostream>
 #include <vector>
 #include <unordered_map>
 #include <string>
 #include <variant>
+#include <stdexcept>
 
 using namespace std;
-using JsonObject = unordered_map<string, JsonNode>;
-using JsonArray = vector<JsonNode>;
+
+using JsonObject = unordered_map<string, class JsonValue>;
+using JsonArray = vector<class JsonValue>;
 
 enum class JsonType : short {
     NUMBER,
@@ -20,160 +22,121 @@ enum class JsonType : short {
     BOOL
 };
 
-class JsonNode {
-    /* Member Variables */
-    private:
-        JsonType   type;
-        JsonObject object;
-        JsonArray array;
+class JsonValue {
+private:
+    JsonType type;
+    JsonObject object;
+    JsonArray array;
 
-        union JsonValue {
-            string j_string;
-            double j_number;
-            bool  j_bool;
-            JsonValue()  {}
-            ~JsonValue() {}
+    // Replace union with variant
+    using JsonValueType = variant<monostate, string, double, bool>;
+    JsonValueType j_value;
 
-            /* Conversion operators for the union */
-            operator string() {
-                return j_string;
-            }
-
-            operator double() {
-                return j_number;
-            }
-
-            operator int() {
-                return j_number;
-            }
-
-            operator bool() {
-                return j_bool;
-            }
-
-        } JsonValue;
-
-        void limitToObject() {
-            if (!isObject()) {
-                throw runtime_error("this operation is only available to object node");
-            }
+    void limitToObject() {
+        if (!isObject()) {
+            throw runtime_error("this operation is only available to object node");
         }
+    }
 
-        void limitToArray() {
-            if (!isArray()) {
-                throw runtime_error("this operation is only available to array node");
-            }
+    void limitToArray() {
+        if (!isArray()) {
+            throw runtime_error("this operation is only available to array node");
         }
+    }
 
-    public:
+public:
+    // Constructors
+    JsonValue(JsonType type) : type(type) {}
 
-        JsonNode(JsonType) : type(type) {}
+    JsonValue() : type(JsonType::NULLT), j_value(monostate{}) {}
 
-        /* Default constructor creates null value node */
-        JsonNode() : type(JsonType::NULLT) {}
+    JsonValue(nullptr_t) : JsonValue() {}
 
-        /* Constructor for implicit conversion from nullptr */
-        JsonNode(nullptr_t value) : JsonNode() {}
+    JsonValue(const vector<JsonValue>& nodes) : type(JsonType::ARRAY), array(nodes) {}
 
-        JsonNode(const vector<JsonNode> &nodes) : type(JsonType::ARRAY), array(nodes) {}
+    JsonValue(double value) : type(JsonType::NUMBER), j_value(value) {}
 
-        JsonNode(double value) : type(JsonType::NUMBER) {
-            JsonValue.j_number = value;
-        }
+    JsonValue(const string& value) : type(JsonType::STRING), j_value(value) {}
 
-        JsonNode(const string value) : type(JsonType::STRING) {
-            JsonValue.j_string = value;
-        }
+    JsonValue(bool value) : type(JsonType::BOOL), j_value(value) {}
 
-        JsonNode(bool value) : type(JsonType::BOOL) {
-            JsonValue.j_bool = value;
-        }
+    // Copy constructor
+    JsonValue(const JsonValue& node) : type(node.type), object(node.object), array(node.array), j_value(node.j_value) {}
 
-        /* Copy constructor */
-        JsonNode (const JsonNode &node) {
-            type   = node.type;
+    // Copy assignment operator
+    JsonValue& operator=(const JsonValue& node) {
+        if (this != &node) {
+            type = node.type;
             object = node.object;
-            array  = node.array;
-
-            JsonValue.j_bool   = node.JsonValue.j_bool;
-            JsonValue.j_string = node.JsonValue.j_string;
-            JsonValue.j_number = node.JsonValue.j_number;
-        } 
-
-        /* Copy assignment operator */
-        JsonNode &operator=(const JsonNode &node) {
-            type   = node.type;
-            object = node.object;
-            array  = node.array;
-
-            JsonValue.j_bool   = node.JsonValue.j_bool;
-            JsonValue.j_string = node.JsonValue.j_string;
-            JsonValue.j_number = node.JsonValue.j_number;
-        } 
-
-        bool isValue() {
-            return type == JsonType :: BOOL   ||
-                   type == JsonType :: NUMBER ||
-                   type == JsonType :: STRING ||
-                   type == JsonType :: NULLT;
+            array = node.array;
+            j_value = node.j_value;
         }
+        return *this;
+    }
 
-        bool isObject() {
-            return type == JsonType :: OBJECT;
-        }
+    // Member functions
+    bool isValue() const {
+        return type == JsonType::BOOL || type == JsonType::NUMBER || type == JsonType::STRING || type == JsonType::NULLT;
+    }
 
-        bool isArray() {
-            return type == JsonType :: ARRAY;
-        }
+    bool isObject() const {
+        return type == JsonType::OBJECT;
+    }
 
-        bool isNULL() {
-            return type == JsonType :: NULLT;
-        }
+    bool isArray() const {
+        return type == JsonType::ARRAY;
+    }
 
-        void appendArray(const JsonNode &node) {
-            array.push_back(node);
-        }
+    bool isNULL() const {
+        return type == JsonType::NULLT;
+    }
 
-        template<typename T>
-        T get() {
-            if (!isValue()) {
-                throw std::runtime_error("unable to get value for this type");
-            }
-            return static_cast<T>(JsonValue);
+    void appendArray(const JsonValue& node) {
+        if (!isArray()) {
+            throw runtime_error("appendArray is only available for array nodes");
         }
+        array.push_back(node);
+    }
 
-        /* Index operator overloads*/
-        JsonNode &operator[](int index) {
-            limitToArray();
-            return array[index];
+    template<typename T>
+    T get() const {
+        if (!isValue()) {
+            throw runtime_error("unable to get value for this type");
         }
+        return get<T>(j_value);
+    }
 
-        JsonNode &operator[](const string &key) {
-            limitToObject();
-            return object[key];
-        }
+    // Index operator overloads
+    JsonValue& operator[](int index) {
+        limitToArray();
+        return array[index];
+    }
 
-        JsonNode &operator[](const char *key) {
-            limitToObject();
-            return object[key];
-        }
+    JsonValue& operator[](const string& key) {
+        limitToObject();
+        return object[key];
+    }
 
-        /* Conversion operator overloads */
-        operator string() {
-            return JsonValue.j_string;
-        }
+    JsonValue& operator[](const char* key) {
+        return (*this)[string(key)];
+    }
 
-        operator int() {
-            return JsonValue.j_number;
-        }
+    // Conversion operator overloads
+    operator string() const {
+        return get<string>();
+    }
 
-        operator double() {
-            return JsonValue.j_number;
-        }
+    operator int() const {
+        return static_cast<int>(get<double>());
+    }
 
-        operator bool() {
-            return JsonValue.j_bool;
-        }
+    operator double() const {
+        return get<double>();
+    }
+
+    operator bool() const {
+        return get<bool>();
+    }
 };
 
-#endif //JSONLANG.H
+#endif // JSONLANG_H
