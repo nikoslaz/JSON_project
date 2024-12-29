@@ -30,7 +30,7 @@ class JsonValue {
         ~value() {}
 
         // conversion operators for the union
-        operator std::string()
+        operator string()
         {
             return d_string;
         }
@@ -52,5 +52,5 @@ class JsonValue {
 
     } d_value;
 
-    
+
 };
