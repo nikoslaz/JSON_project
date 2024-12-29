@@ -85,8 +85,6 @@ public:
 
     JsonValue(const vector<JsonValue> &nodes) : d_type(JsonType::ARRAY), d_array(nodes) {}
 
-    //Maybe add constructor for OBJECT
-
     JsonValue(int value) : d_type(JsonType::NUMBER)
     {
         d_value.d_number = value;
@@ -180,7 +178,7 @@ public:
         return d_array[index];
     }
 
-    JsonValue &operator[](const std::string &key)
+    JsonValue &operator[](const string &key)
     {
         limitToObject();
         return d_object[key];
@@ -193,7 +191,7 @@ public:
     }
 
     // conversion operator oveloads
-    operator std::string()
+    operator string()
     {
         return d_value.d_string;
     }
@@ -212,6 +210,6 @@ public:
     {
         return d_value.d_bool;
     }    
-};
 
-using JSON = JsonValue;
+    JsonValue parse(const std::string &s);
+};
