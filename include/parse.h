@@ -129,3 +129,49 @@ JsonValue JsonValue::parse(const std::string &s)
 
     return parseObject(s, i, bracePairs[i], bracePairs);
 }
+
+std::string JsonValue::stringify(const JsonValue& node){
+    switch(node.d_type){
+        case JsonType::BOOL:
+            return node.d_value.d_bool ? "true" : "false";
+        case JsonType::NULLT:
+            return "null";
+        case JsonType::NUMBER:
+            return std::to_string(node.d_value.d_number);
+        case JsonType::STRING:
+        {
+            std::string ans = "\"";
+            ans += node.d_value.d_string;
+            ans += '"';
+            return ans;
+        }
+            
+        case JsonType::ARRAY:
+        {
+            std::string ans = "[";
+            for(auto v: node.d_array)
+            {
+                ans += stringify(v);
+                ans+=',';
+            }
+            ans[ans.length()-1]=']';
+            return ans;
+        }
+        case JsonType::OBJECT:
+        {
+            std::string ans = "{";
+            for(auto &k: node.d_object)
+            {
+                ans += '"';
+                ans += k.first;
+                ans += '"';
+                ans+=':';
+                ans+=stringify(k.second);
+                ans+=',';
+            }
+            ans[ans.length()-1]='}';
+            return ans;
+        }
+        
+    }
+}

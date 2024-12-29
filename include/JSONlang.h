@@ -212,4 +212,5 @@ public:
     }    
 
     JsonValue parse(const std::string &s);
+    string stringify(const JsonValue& node);
 };
