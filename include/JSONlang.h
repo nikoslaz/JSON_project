@@ -5,7 +5,7 @@
 
 using namespace std;
 
-enum class JSONType : short
+enum class JsonType : short
 {
     NUMBER,
     STRING,
@@ -16,7 +16,7 @@ enum class JSONType : short
 };
 
 class JsonValue {
-    JSONType d_type;
+    JsonType d_type;
     unordered_map<string, JsonValue> d_object;
     vector <JsonValue> d_array;
 
@@ -70,37 +70,39 @@ class JsonValue {
 
 public: 
 
-    JsonValue(JSONType type) : d_type(type) {}
+    JsonValue(JsonType type) : d_type(type) {}
 
     // default constructor creates null value node
-    JsonValue() : d_type(JSONType::NULLT) {}
+    JsonValue() : d_type(JsonType::NULLT) {}
 
     // constructors for implicit conversion from nullptr
     JsonValue(nullptr_t value) : JsonValue() {}
 
-    JsonValue(double value) : d_type(JSONType::NUMBER)
+    JsonValue(double value) : d_type(JsonType::NUMBER)
     {
         d_value.d_number = value;
     }
 
-    JsonValue(const vector<JsonValue> &nodes) : d_type(JSONType::ARRAY), d_array(nodes) {}
+    JsonValue(const vector<JsonValue> &nodes) : d_type(JsonType::ARRAY), d_array(nodes) {}
 
-    JsonValue(int value) : d_type(JSONType::NUMBER)
+    //Maybe add constructor for OBJECT
+
+    JsonValue(int value) : d_type(JsonType::NUMBER)
     {
         d_value.d_number = value;
     }
 
-    JsonValue(const string &value) : d_type(JSONType::STRING)
+    JsonValue(const string &value) : d_type(JsonType::STRING)
     {
         d_value.d_string = value;
     }
 
-    JsonValue(const char *value) : d_type(JSONType::STRING)
+    JsonValue(const char *value) : d_type(JsonType::STRING)
     {
         d_value.d_string = value;
     }
 
-    JsonValue(bool value) : d_type(JSONType::BOOL)
+    JsonValue(bool value) : d_type(JsonType::BOOL)
     {
         d_value.d_bool = value;
     }
@@ -131,5 +133,85 @@ public:
         return *this;
     }
 
+    bool isValue()
+    {
+        return d_type == JsonType::BOOL ||
+               d_type == JsonType::NUMBER ||
+               d_type == JsonType::STRING ||
+               d_type == JsonType::NULLT;
+    }
 
+    // helper methods
+    bool isObject()
+    {
+        return d_type == JsonType::OBJECT;
+    }
+
+    bool isArray()
+    {
+        return d_type == JsonType::ARRAY;
+    }
+
+    bool isNUll()
+    {
+        return d_type == JsonType::NULLT;
+    }
+
+    void appendArray(const JsonValue &node)
+    {
+        d_array.push_back(node);
+    }
+
+    template <typename T>
+    T get()
+    {
+        if (!isValue())
+        {
+            throw runtime_error("unable to get value for this type");
+        }
+        return static_cast<T>(d_value);
+    }
+
+    
+    // index operator overloads
+    JsonValue &operator[](int index)
+    {
+        limitToArray();
+        return d_array[index];
+    }
+
+    JsonValue &operator[](const std::string &key)
+    {
+        limitToObject();
+        return d_object[key];
+    }
+
+    JsonValue &operator[](const char *key)
+    {
+        limitToObject();
+        return d_object[key];
+    }
+
+    // conversion operator oveloads
+    operator std::string()
+    {
+        return d_value.d_string;
+    }
+
+    operator int()
+    {
+        return d_value.d_number;
+    }
+
+    operator double()
+    {
+        return d_value.d_number;
+    }
+
+    operator bool()
+    {
+        return d_value.d_bool;
+    }    
 };
+
+using JSON = JsonValue;
