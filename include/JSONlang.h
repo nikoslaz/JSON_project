@@ -1,56 +1,27 @@
+#ifndef JSON_LANG_H
+#define JSON_LANG_H
+
 #include <iostream>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <string>
+#include <variant>
+#include <algorithm>
+#include <sstream>
+#include <functional>
+#include <regex>
 
 using namespace std;
 
-enum class JsonType : short
-{
-    NUMBER,
-    STRING,
-    NULLT,
-    OBJECT,
-    ARRAY,
-    BOOL
-};
+class JsonValue;
+
+using JsonObject = map<string, JsonValue>;
+using JsonArray = vector<JsonValue>;
+using JsonVariant = variant<monostate, bool, double, string, JsonObject, JsonArray>;
 
 class JsonValue {
-    JsonType d_type;
-    unordered_map<string, JsonValue> d_object;
-    vector <JsonValue> d_array;
-
-    // union to hold the value if there is a value.
-    union value
-    {
-        string d_string;
-        double d_number;
-        bool d_bool;
-        value() {}
-        ~value() {}
-
-        // conversion operators for the union
-        operator string()
-        {
-            return d_string;
-        }
-
-        operator double()
-        {
-            return d_number;
-        }
-
-        operator int()
-        {
-            return d_number;
-        }
-
-        operator bool()
-        {
-            return d_bool;
-        }
-
-    } d_value;
+private:
+    JsonVariant data;
 
     void limitToArray()
     {
@@ -68,150 +39,100 @@ class JsonValue {
         }
     }
 
-public: 
+public:
+    JsonValue() : data(monostate{}) {}
+    JsonValue(bool value) : data(value) {}
+    JsonValue(double value) : data(value) {}
+    JsonValue(int value) : data(static_cast<double>(value)) {}
+    JsonValue(const string& value) : data(value) {}
+    JsonValue(const char* value) : data(string(value)) {}
+    JsonValue(const JsonObject& value) : data(value) {}
+    JsonValue(const JsonArray& value) : data(value) {}
 
-    JsonValue(JsonType type) : d_type(type) {}
 
-    // default constructor creates null value node
-    JsonValue() : d_type(JsonType::NULLT) {}
-
-    // constructors for implicit conversion from nullptr
-    JsonValue(nullptr_t value) : JsonValue() {}
-
-    JsonValue(double value) : d_type(JsonType::NUMBER)
-    {
-        d_value.d_number = value;
+    // Copy constructor
+    JsonValue(const JsonValue &value) {
+        data = value.data;
     }
 
-    JsonValue(const vector<JsonValue> &nodes) : d_type(JsonType::ARRAY), d_array(nodes) {}
-
-    JsonValue(int value) : d_type(JsonType::NUMBER)
-    {
-        d_value.d_number = value;
-    }
-
-    JsonValue(const string &value) : d_type(JsonType::STRING)
-    {
-        d_value.d_string = value;
-    }
-
-    JsonValue(const char *value) : d_type(JsonType::STRING)
-    {
-        d_value.d_string = value;
-    }
-
-    JsonValue(bool value) : d_type(JsonType::BOOL)
-    {
-        d_value.d_bool = value;
-    }
-
-    // copy constructor
-    JsonValue(const JsonValue &node)
-    {
-        d_type = node.d_type;
-        d_object = node.d_object;
-        d_array = node.d_array;
-
-        d_value.d_bool = node.d_value.d_bool;
-        d_value.d_string = node.d_value.d_string;
-        d_value.d_number = node.d_value.d_number;
-    }
-
-    // copy assignment operator 
-    JsonValue &operator=(const JsonValue &node)
-    {
-        d_type = node.d_type;
-        d_object = node.d_object;
-        d_array = node.d_array;
-
-        d_value.d_bool = node.d_value.d_bool;
-        d_value.d_string = node.d_value.d_string;
-        d_value.d_number = node.d_value.d_number;
-
+    JsonValue &operator=(const JsonValue &value) {
+        data = value.data;
         return *this;
     }
 
-    bool isValue()
-    {
-        return d_type == JsonType::BOOL ||
-               d_type == JsonType::NUMBER ||
-               d_type == JsonType::STRING ||
-               d_type == JsonType::NULLT;
+    bool isValue() {
+        return holds_alternative<double>(this->data) ||
+               holds_alternative<string>(this->data) ||
+               holds_alternative<bool>(this->data);
     }
 
-    // helper methods
-    bool isObject()
-    {
-        return d_type == JsonType::OBJECT;
+    bool isObject() {
+        return holds_alternative<JsonObject>(this->data);
     }
 
-    bool isArray()
-    {
-        return d_type == JsonType::ARRAY;
+    bool isArray() {
+        return holds_alternative<JsonArray>(this->data);
     }
 
-    bool isNUll()
-    {
-        return d_type == JsonType::NULLT;
+    bool isNULL() {
+        return holds_alternative<monostate>(this->data);
     }
 
-    void appendArray(const JsonValue &node)
-    {
-        d_array.push_back(node);
-    }
-
-    template <typename T>
-    T get()
-    {
-        if (!isValue())
-        {
-            throw runtime_error("unable to get value for this type");
-        }
-        return static_cast<T>(d_value);
-    }
-
-    
     // index operator overloads
     JsonValue &operator[](int index)
     {
         limitToArray();
-        return d_array[index];
+        return get<JsonArray>(this->data)[index];
     }
 
     JsonValue &operator[](const string &key)
     {
         limitToObject();
-        return d_object[key];
+        return get<JsonObject>(this->data)[key];
     }
 
     JsonValue &operator[](const char *key)
     {
         limitToObject();
-        return d_object[key];
+        return get<JsonObject>(this->data)[key];
     }
 
-    // conversion operator oveloads
-    operator string()
-    {
-        return d_value.d_string;
+    JsonVariant getData() {
+        return this->data;
     }
 
-    operator int()
-    {
-        return d_value.d_number;
+    // Conversion operator overloads
+    operator string() {
+        if (holds_alternative<string>(data)) {
+            return get<string>(data);
+        }
+        throw runtime_error("JsonValue is not a string");
     }
 
-    operator double()
-    {
-        return d_value.d_number;
+    operator int() {
+        if (holds_alternative<double>(data)) {
+            return static_cast<int>(get<double>(data));
+        }
+        throw runtime_error("JsonValue is not a number");
     }
 
-    operator bool()
-    {
-        return d_value.d_bool;
-    }    
+    operator double() {
+        if (holds_alternative<double>(data)) {
+            return get<double>(data);
+        }
+        throw runtime_error("JsonValue is not a number");
+    }
 
-    JsonValue parse(const std::string &s);
-    
-    string stringify(const JsonValue& node);
+    operator bool() {
+        if (holds_alternative<bool>(data)) {
+            return get<bool>(data);
+        }
+        throw runtime_error("JsonValue is not a boolean");
+    }
+
+    static string parseInput(const string& input);
+    static JsonValue parse(const string &s);
+
 };
+
+#endif

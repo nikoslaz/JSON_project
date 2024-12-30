@@ -3,14 +3,13 @@
 
 #include <string>
 #include <JSONlang.h>
-#include <unordered_map>
+#include <map>
 #include <vector>
 
-
-void findBracePairs(const std::string &s, std::unordered_map<int,int> &bracePairs)
+void findBracePairs(const string &s, map<int,int> &bracePairs)
 {
     // finds all brace pairs in a JSON string
-    std::vector<int> stack;
+    vector<int> stack;
 
     int n = s.length();
 
@@ -33,7 +32,7 @@ bool isWhitespace(char c){
     return c == ' ' || c == '\n';
 }
 
-bool isDouble(const std::string &s)
+bool isDouble(const string &s)
 {
     int i = 0;
     if(s[0]=='+' || s[0]=='-')
@@ -45,7 +44,7 @@ bool isDouble(const std::string &s)
 
     while(i < s.length())
     {
-        if(!std::isdigit(s[i]) && s[i]!='.')
+        if(!isdigit(s[i]) && s[i]!='.')
         {
             return false;
         }
@@ -64,7 +63,7 @@ bool isDouble(const std::string &s)
     return true;
 }
 
-bool isInteger(const std::string &s)
+bool isInteger(const string &s)
 {
     int i = 0;
     if(s[0]=='+' || s[0]=='-')
@@ -74,7 +73,7 @@ bool isInteger(const std::string &s)
 
     while(i < s.length())
     {
-        if(!std::isdigit(s[i]))
+        if(!isdigit(s[i]))
         {
             return false;
         }
@@ -84,7 +83,7 @@ bool isInteger(const std::string &s)
     return true;
 }
 
-JsonValue getValue(const std::string &s){
+JsonValue getValue(const string &s){
 
     int i = 0; int j = s.length()-1;
     while(isWhitespace(s[i]))
@@ -96,7 +95,7 @@ JsonValue getValue(const std::string &s){
     {
         j--;
     }
-    std::string temp = s.substr(i, j-i + 1);
+    string temp = s.substr(i, j-i + 1);
 
     if(temp[0]=='"')
     {
@@ -114,12 +113,12 @@ JsonValue getValue(const std::string &s){
     }
 
     if(isDouble(temp)){
-        return JsonValue(std::stod(temp));
+        return JsonValue(stod(temp));
     }
 
     if(isInteger(temp))
     {
-        return JsonValue(std::stoi(temp));
+        return JsonValue(stoi(temp));
     }
 
     return JsonValue(temp);
