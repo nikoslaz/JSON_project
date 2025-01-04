@@ -1,46 +1,33 @@
 #include <JSONlang.h>
 
-KeyValue kv;
+KeyValue kv{};
+JsonValue val;
 
 #define JSON(value) JsonValue value
 #define OBJECT JsonValue
-#define STRING(x) kv.ret(JsonValue{x})
-#define NUMBER(x) kv.ret(JsonValue{x})
+#define VALUE val
+#define STRING(x) kv.ret(VALUE = x)
+#define NUMBER(x) kv.ret(VALUE = x)
+#define TRUE      kv.ret(VALUE = true)
+#define FALSE     kv.ret(VALUE = false)
+// #define NULL      kv.ret(JsonValue{nullptr})
 #define KEY(x) (kv.create(#x)) ? JsonValue{}
-#define TRUE kv.ret(JsonValue{true})
-#define FALSE kv.ret(JsonValue{false})
-#define NULL kv.ret(JsonValue{nullptr})
 
 int main() {
-    // Case 1: String
-    JsonValue stringTest = STRING("example");
-    std::cout << "String Test: " << std::get<std::string>(stringTest.data) << std::endl;
+    JSON(book) = OBJECT {
+    KEY(title) : STRING("Gone Girl"),
+    KEY(published) : NUMBER(2012), 
+    KEY(type) : STRING("Thriller"), 
+    KEY(author) : OBJECT{
+            KEY(firstname) : STRING("GILLIAN"), 
+            KEY(sirname) : STRING("FLYNN"), 
+            KEY(age) : NUMBER(45)
+        }
+    };
 
-    // Case 2: Number
-    JsonValue intTest = NUMBER(23);
-    JsonValue floatTest = NUMBER(3.14);
-    std::cout << "Integer Test: " << std::get<double>(intTest.data) << std::endl;
-    std::cout << "Float Test: " << std::get<double>(floatTest.data) << std::endl;
-
-    // Case 3: Boolean
-    JsonValue trueTest = TRUE;
-    JsonValue falseTest = FALSE;
-    std::cout << "True Test: " << std::get<bool>(trueTest.data) << std::endl;
-    std::cout << "False Test: " << std::get<bool>(falseTest.data) << std::endl;
-
-    // Case 4: NULL
-    JsonValue nullTest = NULL;
-    std::cout << "Null Test: ";
-    if (nullTest.isNULL()) {
-        std::cout << "null" << std::endl;
-    } else {
-        std::cout << "not null" << std::endl;
-    }
-
-    // Case 5: Object
-    JSON(objectTest) = OBJECT{KEY(title) : STRING("C++11")};
-    std::cout << "Object Test:" << std::endl;
-    for (const auto& [key, value] : std::get<JsonObject>(objectTest.data)) {
+     // Print the JSON object
+    std::cout << "JSON(book):" << std::endl;
+    for (const auto& [key, value] : std::get<JsonObject>(book.data)) {
         std::cout << key << ": ";
         if (std::holds_alternative<std::string>(value.data)) {
             std::cout << std::get<std::string>(value.data);
@@ -48,6 +35,22 @@ int main() {
             std::cout << std::get<double>(value.data);
         } else if (std::holds_alternative<bool>(value.data)) {
             std::cout << std::get<bool>(value.data);
+        } else if (std::holds_alternative<JsonObject>(value.data)) {
+            std::cout << "{" << std::endl;
+            for (const auto& [subKey, subValue] : std::get<JsonObject>(value.data)) {
+                std::cout << "  " << subKey << ": ";
+                if (std::holds_alternative<std::string>(subValue.data)) {
+                    std::cout << std::get<std::string>(subValue.data);
+                } else if (std::holds_alternative<double>(subValue.data)) {
+                    std::cout << std::get<double>(subValue.data);
+                } else if (std::holds_alternative<bool>(subValue.data)) {
+                    std::cout << std::get<bool>(subValue.data);
+                } else if (subValue.data.index() == 0) {
+                    std::cout << "null";
+                }
+                std::cout << std::endl;
+            }
+            std::cout << "}";
         } else if (value.data.index() == 0) {
             std::cout << "null";
         }

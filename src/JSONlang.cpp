@@ -389,3 +389,33 @@ string JsonValue::executeSet(JsonValue& root, const string& command) {
 
     throw runtime_error("Invalid SET command");
 }
+
+void JsonValue::printJsonObject(const JsonObject& obj, int indent) {
+    for (const auto& [key, value] : obj) {
+        std::cout << std::string(indent, ' ') << key << ": ";
+        printJsonValue(value, indent + 2);
+    }
+}
+
+void JsonValue::printJsonValue(const JsonValue& value, int indent) {
+    if (std::holds_alternative<std::string>(value.data)) {
+        std::cout << std::get<std::string>(value.data) << std::endl;
+    } else if (std::holds_alternative<double>(value.data)) {
+        std::cout << std::get<double>(value.data) << std::endl;
+    } else if (std::holds_alternative<bool>(value.data)) {
+        std::cout << (std::get<bool>(value.data) ? "true" : "false") << std::endl;
+    } else if (std::holds_alternative<JsonObject>(value.data)) {
+        std::cout << "{" << std::endl;
+        printJsonObject(std::get<JsonObject>(value.data), indent);
+        std::cout << std::string(indent - 2, ' ') << "}" << std::endl;
+    } else if (std::holds_alternative<JsonArray>(value.data)) {
+        std::cout << "[" << std::endl;
+        for (const auto& item : std::get<JsonArray>(value.data)) {
+            std::cout << std::string(indent, ' ');
+            printJsonValue(item, indent + 2);
+        }
+        std::cout << std::string(indent - 2, ' ') << "]" << std::endl;
+    } else {
+        std::cout << "null" << std::endl;
+    }
+}

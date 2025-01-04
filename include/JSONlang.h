@@ -14,6 +14,7 @@
 using namespace std;
 
 class JsonValue;
+class KeyValue;
 
 using JsonObject = map<string, JsonValue>;
 using JsonArray = vector<JsonValue>;
@@ -48,12 +49,16 @@ public:
     JsonValue(const JsonObject& value) : data(value) {}
     JsonValue(const JsonArray& value) : data(value) {}
     JsonValue(nullptr_t) : data(monostate{}) {}
-    JsonValue(const std::initializer_list<std::pair<std::string, JsonValue>>& list)
-            : data(JsonObject()) {
-            auto& obj = get<JsonObject>(data);
-            for (const auto& pair : list) {
-                obj.insert(pair);
+    JsonValue(const std::initializer_list<JsonValue>& list)
+        : data(JsonObject())
+    {
+        auto& obj = get<JsonObject>(data);
+        for (const auto& item : list) {
+            if (item.isObject()) {
+                const auto& itemObj = get<JsonObject>(item.data);
+                obj.insert(itemObj.begin(), itemObj.end());
             }
+        }
     }
 
     // Copy constructor
@@ -66,21 +71,21 @@ public:
         return *this;
     }
 
-    bool isValue() {
+    bool isValue() const {
         return holds_alternative<double>(this->data) ||
                holds_alternative<string>(this->data) ||
                holds_alternative<bool>(this->data);
     }
 
-    bool isObject() {
+    bool isObject() const {
         return holds_alternative<JsonObject>(this->data);
     }
 
-    bool isArray() {
+    bool isArray() const {
         return holds_alternative<JsonArray>(this->data);
     }
 
-    bool isNULL() {
+    bool isNULL() const {
         return holds_alternative<monostate>(this->data);
     }
 
@@ -154,16 +159,20 @@ public:
     static string parseInput(const string& input);
     static JsonValue parse(const string &s);
     static string executeSet(JsonValue& root, const string& command);
+    static void printJsonValue(const JsonValue& value, int indent);
+    static void printJsonObject(const JsonObject& obj, int indent);
+    
 };
 
 class KeyValue {
 public:
-    std::string key;
+    string key;
+    JsonValue value;
 
-    KeyValue() {}
+    KeyValue() : value(nullptr) {}
 
     // Create sets the key and returns false for chaining in macros
-    bool create(const std::string& k) {
+    bool create(const string& k) {
         key = k;
         return false;
     }
@@ -173,8 +182,14 @@ public:
         if (key.empty()) {
             return val; // If no key is set, return the value directly
         }
-        return JsonValue(JsonObject{{key, val}}); // Wrap in JsonObject with the key
+        
+        value = val;
+        JsonObject obj;
+        obj.insert({key, val});
+
+        return JsonValue{obj};
     }
+
 };
 
 #endif
