@@ -4,111 +4,107 @@
 JsonValue parseObject(const string &s, int start, int end, map<int,int> &bracePair);
 JsonValue parseArray(const string &s, int start, int end, map<int,int> &bracePair);
 
-JsonValue parseObject(const string &s, int start, int end, map<int,int> &bracePair){
-    /**
-     * s: the json string
-     * start: the index of the opening curly brace for this object
-     * end: the index of the closing curly brace for this object
-     * bracePair: an map that maps index of opening brackets to their corresponding closing brackets.
-     */
-
-    int i = start;
+JsonValue parseObject(const string &s, int start, int end, map<int, int> &bracePair) {
     JsonObject ans;
+    int i = start + 1; // Skip the opening '{'
 
-    while(i < end)
-    {
-        // ignore all characters before the first quote for the key string
-        while(s[i] != '"')
-        {
+    while (i < end) {
+        // Skip whitespace
+        while (i < end && isWhitespace(s[i])) {
             i++;
         }
+
+        // Ensure we start at a key
+        if (i >= end || s[i] != '"') {
+            throw runtime_error("Expected a key starting with '\"'");
+        }
+
+        // Parse the key
         i++;
+        string key;
+        while (i < end && s[i] != '"') {
+            key += s[i++];
+        }
+        if (i >= end || s[i] != '"') {
+            throw runtime_error("Expected closing '\"' for key");
+        }
+        i++; // Skip closing '"'
 
-        // add all characters between the quotes to the key
-        string key = "";
-
-        while(s[i]!='"')
-        {
-            key+=s[i];
+        // Skip whitespace and the ':' separator
+        while (i < end && (isWhitespace(s[i]) || s[i] == ':')) {
             i++;
         }
 
-        // find the semicolon between the key and value
-        while(s[i]!=':')
-        {
-            i++;
+        // Parse the value
+        if (i >= end) {
+            throw runtime_error("Expected a value for key: " + key);
         }
-        i++;
 
-        // ignore all whitespaces till you get to the start of the value
-        while(isWhitespace(s[i]))
-        {
-            i++;
-        }
-        string value = "";
-        
-        // if value starts with a curly brace, it means its an object. 
-        // parse that object.
-        if(s[i]=='{')
-        {
+        if (s[i] == '{') {
+            // Nested object
             ans[key] = parseObject(s, i, bracePair[i], bracePair);
-            i = bracePair[i]+1;
-            continue;
+            i = bracePair[i] + 1;
+        } else if (s[i] == '[') {
+            // Nested array
+            ans[key] = parseArray(s, i, bracePair[i], bracePair);
+            i = bracePair[i] + 1;
+        } else {
+            // Primitive value
+            string value;
+            while (i < end && s[i] != ',' && s[i] != '}') {
+                value += s[i++];
+            }
+            ans[key] = getValue(value);
         }
-        // if value starts with a square bracket, it is an array
-        // parse the array
-        else if(s[i]=='[')
-        {
-             ans[key] = parseArray(s, i, bracePair[i], bracePair);
-            i = bracePair[i]+1;
-            continue;
-        }
-        // it is a JSON Value. Parse it and store it. 
-        // stop when you get to a comma or reach end of this JSON.
-        while(i < end && s[i] !=',')
-        {
-            value += s[i];
+
+        // Skip whitespace and the ',' separator
+        while (i < end && (isWhitespace(s[i]) || s[i] == ',')) {
             i++;
         }
-        
-
-        ans[key] = getValue(value);
     }
 
     return ans;
 }
 
-JsonValue parseArray(const string &s, int start, int end, map<int,int> &bracePair){
-    /**
-     * s: the json string
-     * start: the index of the opening square bracket for this object
-     * end: the index of the closing square bracket for this object
-     * bracePair: an map that maps index of opening brackets to their corresponding closing brackets.
-     */
-    int i = start;
+
+JsonValue parseArray(const string &s, int start, int end, map<int, int> &bracePair) {
     JsonArray ans;
-    i++;
-    while(i < end)
-    {
-        //ignore all whitespace
-        while(isWhitespace(s[i]))
-        {
-            i++;
-        }
-        // find a value
-        string value = "";
+    int i = start + 1; // Skip the opening '['
 
-        //stop when you see a comma or reach end of the array.
-        while(i < end && s[i]!=',')
-        {
-            value += s[i];
+    while (i < end) {
+        // Skip whitespace
+        while (i < end && isWhitespace(s[i])) {
             i++;
         }
-        i++;
-        ans.push_back(getValue(value));
+
+        if (i >= end) break;
+
+        if (s[i] == '{') {
+            // Nested object
+            ans.push_back(parseObject(s, i, bracePair[i], bracePair));
+            i = bracePair[i] + 1;
+        } else if (s[i] == '[') {
+            // Nested array
+            ans.push_back(parseArray(s, i, bracePair[i], bracePair));
+            i = bracePair[i] + 1;
+        } else {
+            // Primitive value
+            string value;
+            while (i < end && s[i] != ',' && s[i] != ']') {
+                value += s[i++];
+            }
+            ans.push_back(getValue(value));
+        }
+
+        // Skip whitespace and the ',' separator
+        while (i < end && (isWhitespace(s[i]) || s[i] == ',')) {
+            i++;
+        }
     }
+
     return ans;
 }
+
 
 JsonValue JsonValue::parse(const string &s)
 {
@@ -130,8 +126,7 @@ JsonValue JsonValue::parse(const string &s)
     return parseObject(s, i, bracePairs[i], bracePairs);
 }
 
-// The one function you can call with any "custom" string. 
-// It returns a JSON-like string or "UNKNOWN_TYPE" if it doesn't recognize the format.
+
 string JsonValue::parseInput(const string& input) 
 {
     // We'll define several lambda helpers **inside** this function.
@@ -301,6 +296,8 @@ string JsonValue::parseInput(const string& input)
         static const regex truePattern("^TRUE$");
         static const regex falsePattern("^FALSE$");
         static const regex nullPattern("^NULL$");
+        static const regex setAssignPattern(R"(^SET\s+(.+)\s+ASSIGN\s+(.+)$)");
+        static const regex setAppendPattern(R"(^SET\s+(.+)\s+APPEND\s+(.+)$)");
 
         smatch match;
         // STRING("...")
@@ -331,6 +328,15 @@ string JsonValue::parseInput(const string& input)
         else if (val.rfind("ARRAY[", 0) == 0 && !val.empty() && val.back() == ']') {
             return parseArray(val);
         }
+        // SET ... ASSIGN ...
+        else if (regex_match(val, match, setAssignPattern)) {
+            return "S";
+        }
+        // SET ... APPEND ...
+        else if (regex_match(val, match, setAppendPattern)) {
+            return "A";
+        }
+
 
         // If none match, return "UNKNOWN_TYPE"
         return "UNKNOWN_TYPE";
@@ -338,4 +344,48 @@ string JsonValue::parseInput(const string& input)
 
     // Finally, we just call parseValue on the user's `input`.
     return parseValue(input);
+}
+
+string JsonValue::executeSet(JsonValue& root, const string& command) {
+    // Patterns for ASSIGN and APPEND operations
+    static const regex setAssignPattern(R"(^SET\s+(.+)\s+ASSIGN\s+(.+)$)");
+    static const regex setAppendPattern(R"(^SET\s+(.+)\s+APPEND\s+(.+)$)");
+    smatch match;
+
+    if (regex_match(command, match, setAssignPattern)) {
+        // Extract the target and value
+        string target = match[1].str();
+        string valueStr = match[2].str();
+
+        // Resolve the target node as a reference
+        JsonValue targetNode = parseAssign(target, root);
+        JsonValue newValue = JsonValue::parse(valueStr);
+
+        // Assign the new value
+        targetNode = newValue;
+        return "ASSIGN_OK";
+    } 
+    else if (regex_match(command, match, setAppendPattern)) {
+        // Extract the target and values
+        string target = match[1].str();
+        string valuesStr = match[2].str();
+
+        // Resolve the target node as a reference
+        JsonValue targetNode = parseAssign(target, root);
+        if (!targetNode.isArray()) {
+            throw runtime_error("APPEND operation is only valid for arrays");
+        }
+
+        // Append each value to the array
+        JsonArray targetArray = get<JsonArray>(targetNode.getData());
+        vector<string> valueParts = splitByTopLevelComma(valuesStr);
+
+        for (const auto& valuePart : valueParts) {
+            JsonValue newValue = JsonValue::parse(valuePart);
+            targetArray.push_back(newValue);
+        }
+        return "APPEND_OK";
+    }
+
+    throw runtime_error("Invalid SET command");
 }

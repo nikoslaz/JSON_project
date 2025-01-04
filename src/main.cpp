@@ -1,78 +1,48 @@
-#include <iostream>
-#include <string>
-#include <regex>
-#include <vector>
-#include <functional>
-#include "JSONlang.h"
+#include <JSONlang.h>
 
-int main()
-{
-    // A few demo calls to json.parseInput(...)
-    JsonValue json;
-    string input;
+KeyValue kv;
 
-    std::cout << json.parseInput("STRING(\"Hello\")") << std::endl;   
-    // -> "Hello"
+#define JSON(value) JsonValue value
+#define OBJECT JsonValue
+#define STRING(x) kv.ret(JsonValue{x})
+#define NUMBER(x) kv.ret(JsonValue{x})
+#define KEY(x) (kv.create(#x)) ? JsonValue{}
+#define TRUE kv.ret(JsonValue{true})
+#define FALSE kv.ret(JsonValue{false})
+#define NULL kv.ret(JsonValue{nullptr})
 
-    std::cout << json.parseInput("NUMBER(123)") << std::endl;         
-    // -> 123
+int main() {
+    // Case 1: String
+    JsonValue stringTest = STRING("example");
+    std::cout << "String Test: " << std::get<std::string>(stringTest.data) << std::endl;
 
-    std::cout << json.parseInput("TRUE") << std::endl;                
-    // -> true
+    // Case 2: Number
+    JsonValue intTest = NUMBER(23);
+    JsonValue floatTest = NUMBER(3.14);
+    std::cout << "Integer Test: " << std::get<double>(intTest.data) << std::endl;
+    std::cout << "Float Test: " << std::get<double>(floatTest.data) << std::endl;
 
-    std::cout << json.parseInput("FALSE") << std::endl;               
-    // -> false
+    // Case 3: Boolean
+    JsonValue trueTest = TRUE;
+    JsonValue falseTest = FALSE;
+    std::cout << "True Test: " << std::get<bool>(trueTest.data) << std::endl;
+    std::cout << "False Test: " << std::get<bool>(falseTest.data) << std::endl;
 
-    std::cout << json.parseInput("NULL") << std::endl;                
-    // -> null
-
-    // OBJECT
-    std::cout << json.parseInput("OBJECT{ KEY(x): NUMBER(42), KEY(msg): STRING(\"Hi\") }") 
-              << std::endl;
-    // -> {"x": 42, "msg": "Hi"}
-
-    // ARRAY
-    std::cout << json.parseInput("ARRAY[ NUMBER(10), STRING(\"abc\"), TRUE ]") 
-              << std::endl;
-    // -> [10, "abc", true]
-
-    // Nested example
-    std::cout << json.parseInput(
-        "OBJECT{ KEY(data): ARRAY[ NUMBER(1), OBJECT{ KEY(foo): STRING(\"bar\") } ] }"
-    ) << std::endl;
-    // -> {"data": [1, {"foo": "bar"}]}
-
-    // Unknown
-    std::cout << json.parseInput("FOO(999)") << std::endl; 
-    // -> UNKNOWN_TYPE
-
-    input = json.parseInput("OBJECT{KEY(title): STRING(\"Gone Girl\"),KEY(year): NUMBER(2011),KEY(available): TRUE}");
-    string jsonObject1 = input;
-    std::cout << "jsonObject1: " << jsonObject1 << std::endl;
-
-    string jsonObjectStr = R"({"title": "Gone Girl", "year": 2011, "available": true})";
-    string jsonArrayStr = R"(["First", "Second", "Third"])";
-
-    // Parse the JSON object string
-    try {
-        JsonValue parsedObject = JsonValue::parse(jsonObjectStr);
-        cout << "Parsed JSON Object:" << endl;
-        cout << "Title: " << static_cast<string>(parsedObject["title"]) << endl;
-        cout << "Year: " << static_cast<int>(parsedObject["year"]) << endl;
-        cout << "Available: " << static_cast<bool>(parsedObject["available"]) << endl;
-    } catch (const exception &e) {
-        cerr << "Error parsing JSON object: " << e.what() << endl;
-    }
-
-    // Parse the JSON array string
-    try {
-        JsonValue parsedArray = JsonValue::parse(jsonArrayStr);
-        cout << "Parsed JSON Array:" << endl;
-        cout << "First Element: " << static_cast<string>(parsedArray[0]) << endl;
-        cout << "Second Element: " << static_cast<string>(parsedArray[1]) << endl;
-        cout << "Third Element: " << static_cast<string>(parsedArray[2]) << endl;
-    } catch (const exception &e) {
-        cerr << "Error parsing JSON array: " << e.what() << endl;
+    // Case 5: Object
+    JSON(objectTest) = OBJECT{KEY(title) : STRING("C++11")};
+    std::cout << "Object Test:" << std::endl;
+    for (const auto& [key, value] : std::get<JsonObject>(objectTest.data)) {
+        std::cout << key << ": ";
+        if (std::holds_alternative<std::string>(value.data)) {
+            std::cout << std::get<std::string>(value.data);
+        } else if (std::holds_alternative<double>(value.data)) {
+            std::cout << std::get<double>(value.data);
+        } else if (std::holds_alternative<bool>(value.data)) {
+            std::cout << std::get<bool>(value.data);
+        } else if (value.data.index() == 0) {
+            std::cout << "null";
+        }
+        std::cout << std::endl;
     }
 
     return 0;

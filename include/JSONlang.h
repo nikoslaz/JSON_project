@@ -20,7 +20,7 @@ using JsonArray = vector<JsonValue>;
 using JsonVariant = variant<monostate, bool, double, string, JsonObject, JsonArray>;
 
 class JsonValue {
-private:
+public:
     JsonVariant data;
 
     void limitToArray()
@@ -39,7 +39,6 @@ private:
         }
     }
 
-public:
     JsonValue() : data(monostate{}) {}
     JsonValue(bool value) : data(value) {}
     JsonValue(double value) : data(value) {}
@@ -48,7 +47,13 @@ public:
     JsonValue(const char* value) : data(string(value)) {}
     JsonValue(const JsonObject& value) : data(value) {}
     JsonValue(const JsonArray& value) : data(value) {}
-
+    JsonValue(const std::initializer_list<std::pair<std::string, JsonValue>>& list)
+            : data(JsonObject()) {
+            auto& obj = get<JsonObject>(data);
+            for (const auto& pair : list) {
+                obj.insert(pair);
+            }
+    }
 
     // Copy constructor
     JsonValue(const JsonValue &value) {
@@ -130,9 +135,43 @@ public:
         throw runtime_error("JsonValue is not a boolean");
     }
 
+
+    void append(const vector<JsonValue>& values) {
+        if (!isArray()) {
+            throw runtime_error("APPEND operation is only valid for arrays");
+        }
+
+        auto& arr = get<JsonArray>(data);
+
+        for (const auto& value : values) {
+            arr.push_back(value);
+        }
+    }
+
     static string parseInput(const string& input);
     static JsonValue parse(const string &s);
+    static string executeSet(JsonValue& root, const string& command);
+};
 
+class KeyValue {
+public:
+    std::string key;
+
+    KeyValue() {}
+
+    // Create sets the key and returns false for chaining in macros
+    bool create(const std::string& k) {
+        key = k;
+        return false;
+    }
+
+    // Ret returns either a JsonObject or a plain JsonValue
+    JsonValue ret(const JsonValue& val) {
+        if (key.empty()) {
+            return val; // If no key is set, return the value directly
+        }
+        return JsonValue(JsonObject{{key, val}}); // Wrap in JsonObject with the key
+    }
 };
 
 #endif
