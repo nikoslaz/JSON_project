@@ -28,6 +28,15 @@ int main() {
     std::cout << "True Test: " << std::get<bool>(trueTest.data) << std::endl;
     std::cout << "False Test: " << std::get<bool>(falseTest.data) << std::endl;
 
+    // Case 4: NULL
+    JsonValue nullTest = NULL;
+    std::cout << "Null Test: ";
+    if (nullTest.isNULL()) {
+        std::cout << "null" << std::endl;
+    } else {
+        std::cout << "not null" << std::endl;
+    }
+
     // Case 5: Object
     JSON(objectTest) = OBJECT{KEY(title) : STRING("C++11")};
     std::cout << "Object Test:" << std::endl;

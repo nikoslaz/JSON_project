@@ -47,6 +47,7 @@ public:
     JsonValue(const char* value) : data(string(value)) {}
     JsonValue(const JsonObject& value) : data(value) {}
     JsonValue(const JsonArray& value) : data(value) {}
+    JsonValue(nullptr_t) : data(monostate{}) {}
     JsonValue(const std::initializer_list<std::pair<std::string, JsonValue>>& list)
             : data(JsonObject()) {
             auto& obj = get<JsonObject>(data);
@@ -108,10 +109,12 @@ public:
 
     // Conversion operator overloads
     operator string() {
-        if (holds_alternative<string>(data)) {
-            return get<string>(data);
+    if (holds_alternative<string>(data)) {
+        return get<string>(data);
+        } else if (holds_alternative<monostate>(data)) {
+            return "null";
         }
-        throw runtime_error("JsonValue is not a string");
+        throw runtime_error("JsonValue is not a string or null");
     }
 
     operator int() {
