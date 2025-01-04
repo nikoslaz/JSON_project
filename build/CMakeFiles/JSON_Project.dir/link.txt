@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/JSON_Project.dir/src/main.cpp.o CMakeFiles/JSON_Project.dir/src/JSONlang.cpp.o -o bin/JSON_Project

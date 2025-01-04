@@ -17,7 +17,7 @@ class JsonValue;
 class KeyValue;
 
 using JsonObject = map<string, JsonValue>;
-using JsonArray = vector<JsonValue>;
+using JsonArray   = vector<JsonValue>;
 using JsonVariant = variant<monostate, bool, double, string, JsonObject, JsonArray>;
 
 class JsonValue {
@@ -49,7 +49,7 @@ public:
     JsonValue(const JsonObject& value) : data(value) {}
     JsonValue(const JsonArray& value) : data(value) {}
     JsonValue(nullptr_t) : data(monostate{}) {}
-    JsonValue(const std::initializer_list<JsonValue>& list)
+    JsonValue(const initializer_list<JsonValue>& list)
         : data(JsonObject())
     {
         auto& obj = get<JsonObject>(data);
@@ -94,6 +94,17 @@ public:
     {
         limitToArray();
         return get<JsonArray>(this->data)[index];
+    }
+
+    JsonValue& operator[](initializer_list<JsonValue> list) {
+        if (!isArray()) {
+            data = JsonArray{}; // Convert the current value to a JsonArray if it isn't one
+        }
+        auto& arr = get<JsonArray>(data); // Get the underlying array
+        for (const auto& item : list) {
+            arr.push_back(item); // Add each initializer list item to the array
+        }
+        return *this; // Allow chaining
     }
 
     JsonValue &operator[](const string &key)

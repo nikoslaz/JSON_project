@@ -5,15 +5,17 @@ JsonValue val;
 
 #define JSON(value) JsonValue value
 #define OBJECT JsonValue
+#define ARRAY JsonValue 
 #define VALUE val
 #define STRING(x) kv.ret(VALUE = x)
 #define NUMBER(x) kv.ret(VALUE = x)
 #define TRUE      kv.ret(VALUE = true)
 #define FALSE     kv.ret(VALUE = false)
-// #define NULL      kv.ret(JsonValue{nullptr})
+#define NULL      kv.ret(JsonValue{nullptr})
 #define KEY(x) (kv.create(#x)) ? JsonValue{}
 
 int main() {
+
     JSON(book) = OBJECT {
     KEY(title) : STRING("Gone Girl"),
     KEY(published) : NUMBER(2012), 

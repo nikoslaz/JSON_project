@@ -1,4 +1,0 @@
-/mnt/c/Users/nikos/OneDrive/Έγγραφα/GitHub/JSON_project/build/CMakeFiles/JSON_Project.dir
-/mnt/c/Users/nikos/OneDrive/Έγγραφα/GitHub/JSON_project/build/CMakeFiles/run.dir
-/mnt/c/Users/nikos/OneDrive/Έγγραφα/GitHub/JSON_project/build/CMakeFiles/edit_cache.dir
-/mnt/c/Users/nikos/OneDrive/Έγγραφα/GitHub/JSON_project/build/CMakeFiles/rebuild_cache.dir
