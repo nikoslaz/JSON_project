@@ -12,7 +12,6 @@ include_directories(
 
 add_executable(JSON_Project
     src/main.cpp
-    src/JSONlang.cpp
 )
 
 set_target_properties(JSON_Project PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
