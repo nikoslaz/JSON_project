@@ -7,6 +7,7 @@
 #include <memory>
 #include <stdexcept>
 #include <map>
+#include <cmath> // Include cmath for fmod
 
 using namespace std;
 
@@ -74,6 +75,31 @@ public:
     JsonValue& operator--();
 
     JsonValue operator+(const JsonValue& other) const;
+    JsonValue operator-(const JsonValue& other) const;
+    JsonValue operator*(const JsonValue& other) const;
+    JsonValue operator/(const JsonValue& other) const;
+    JsonValue operator%(const JsonValue& other) const;
+
+    // Relational operators
+    bool operator>(const JsonValue& other) const;
+    bool operator>=(const JsonValue& other) const;
+    bool operator<(const JsonValue& other) const;
+    bool operator<=(const JsonValue& other) const;
+
+    // Logical operators
+    JsonValue operator&&(const JsonValue& other) const;
+    JsonValue operator||(const JsonValue& other) const;
+    JsonValue operator!() const;
+
+    // Equality operators
+    bool operator==(const JsonValue& other) const;
+    bool operator!=(const JsonValue& other) const;
+
+    // Add this in the JsonValue class public section
+    friend ostream& operator<<(ostream& os, const JsonValue& jv) {
+        jv.print();
+        return os << endl;
+    }
 
 private:
     string typeToString(Type t) const {
@@ -88,6 +114,12 @@ private:
         }
     }
 };
+
+// Add operator== declarations for comparing with JsonObject and JsonArray directly
+bool operator==(const JsonObject& lhs, const JsonObject& rhs);
+bool operator==(const JsonArray& lhs, const JsonArray& rhs);
+bool operator!=(const JsonObject& lhs, const JsonObject& rhs);
+bool operator!=(const JsonArray& lhs, const JsonArray& rhs);
 
 //Class JsonObject
 class JsonObject {
@@ -165,6 +197,7 @@ public:
 //Class JsonArray
 class JsonArray {
     vector<shared_ptr<JsonValue>> values;
+    friend class JsonValue;  // Allow JsonValue to access private members
 
 public:
     JsonArray();
@@ -186,6 +219,9 @@ public:
 
     template <typename DataType>
     JsonArray operator,(const DataType& dt);
+
+    // Add new operator declaration
+    JsonArray operator[](const JsonObject& obj);
 
     void print() const;
     size_t size() const;
@@ -504,6 +540,11 @@ JsonValue& JsonValue::operator--() {
 }
 
 JsonValue JsonValue::operator+(const JsonValue& other) const {
+    // Handle number addition
+    if (type == Type::Number && other.type == Type::Number) {
+        return JsonValue(data.numberValue + other.data.numberValue);
+    }
+    
     // Handle string concatenation
     if (type == Type::String && other.type == Type::String) {
         return JsonValue(*data.stringValue + *other.data.stringValue);
@@ -519,14 +560,166 @@ JsonValue JsonValue::operator+(const JsonValue& other) const {
     // Handle object merging
     if (type == Type::Object && other.type == Type::Object) {
         JsonObject result(*data.objectValue);
-        // Now we can access data directly since JsonValue is a friend
         for (const auto& pair : other.data.objectValue->data) {
             result.add(pair.first, *pair.second);
         }
         return JsonValue(result);
     }
     
-    throw runtime_error("Error: operator+ only supports String+String, Array+Array, or Object+Object");
+    throw runtime_error("Error: operator+ only supports Number+Number, String+String, Array+Array, or Object+Object");
+}
+
+JsonValue JsonValue::operator-(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator- only supports Number-Number");
+    }
+    return JsonValue(data.numberValue - other.data.numberValue);
+}
+
+JsonValue JsonValue::operator*(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator* only supports Number-Number");
+    }
+    return JsonValue(data.numberValue * other.data.numberValue);
+}
+
+JsonValue JsonValue::operator/(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator/ only supports Number-Number");
+    }
+    if (other.data.numberValue == 0) {
+        throw runtime_error("Error: division by zero");
+    }
+    return JsonValue(data.numberValue / other.data.numberValue);
+}
+
+JsonValue JsonValue::operator%(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator% only supports Number-Number");
+    }
+    if (other.data.numberValue == 0) {
+        throw runtime_error("Error: modulo by zero");
+    }
+    return JsonValue(fmod(data.numberValue, other.data.numberValue));
+}
+
+bool JsonValue::operator>(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator> only supports Number-Number");
+    }
+    return data.numberValue > other.data.numberValue;
+}
+
+bool JsonValue::operator>=(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator>= only supports Number-Number");
+    }
+    return data.numberValue >= other.data.numberValue;
+}
+
+bool JsonValue::operator<(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator< only supports Number-Number");
+    }
+    return data.numberValue < other.data.numberValue;
+}
+
+bool JsonValue::operator<=(const JsonValue& other) const {
+    if (type != Type::Number || other.type != Type::Number) {
+        throw runtime_error("Error: operator<= only supports Number-Number");
+    }
+    return data.numberValue <= other.data.numberValue;
+}
+
+JsonValue JsonValue::operator&&(const JsonValue& other) const {
+    if (type != Type::Boolean || other.type != Type::Boolean) {
+        throw runtime_error("Error: operator&& only supports Boolean&&Boolean");
+    }
+    return JsonValue(data.boolValue && other.data.boolValue);
+}
+
+JsonValue JsonValue::operator||(const JsonValue& other) const {
+    if (type != Type::Boolean || other.type != Type::Boolean) {
+        throw runtime_error("Error: operator|| only supports Boolean||Boolean");
+    }
+    return JsonValue(data.boolValue || other.data.boolValue);
+}
+
+JsonValue JsonValue::operator!() const {
+    if (type != Type::Boolean) {
+        throw runtime_error("Error: operator! only supports Boolean values");
+    }
+    return JsonValue(!data.boolValue);
+}
+
+// Add implementations after other JsonValue methods
+bool JsonValue::operator==(const JsonValue& other) const {
+    if (type != other.type) {
+        return false;
+    }
+
+    switch (type) {
+        case Type::String:
+            return *data.stringValue == *other.data.stringValue;
+        case Type::Number:
+            return data.numberValue == other.data.numberValue;
+        case Type::Boolean:
+            return data.boolValue == other.data.boolValue;
+        case Type::Null:
+            return true;  // All null values are equal
+        case Type::Array:
+            if (data.arrayValue->size() != other.data.arrayValue->size()) {
+                return false;
+            }
+            // Compare each element recursively
+            for (size_t i = 0; i < data.arrayValue->size(); i++) {
+                if (!(*data.arrayValue->values[i] == *other.data.arrayValue->values[i])) {
+                    return false;
+                }
+            }
+            return true;
+        case Type::Object:
+            if (data.objectValue->size() != other.data.objectValue->size()) {
+                return false;
+            }
+            // Compare each key-value pair recursively
+            for (const auto& pair : data.objectValue->data) {
+                bool found = false;
+                for (const auto& other_pair : other.data.objectValue->data) {
+                    if (pair.first == other_pair.first) {
+                        if (!(*pair.second == *other_pair.second)) {
+                            return false;
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return false;
+            }
+            return true;
+    }
+    return false;
+}
+
+bool JsonValue::operator!=(const JsonValue& other) const {
+    return !(*this == other);
+}
+
+// Add implementations after JsonValue methods
+bool operator==(const JsonObject& lhs, const JsonObject& rhs) {
+    return JsonValue(lhs) == JsonValue(rhs);
+}
+
+bool operator==(const JsonArray& lhs, const JsonArray& rhs) {
+    return JsonValue(lhs) == JsonValue(rhs);
+}
+
+bool operator!=(const JsonObject& lhs, const JsonObject& rhs) {
+    return !(lhs == rhs);
+}
+
+bool operator!=(const JsonArray& lhs, const JsonArray& rhs) {
+    return !(lhs == rhs);
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------//
@@ -654,6 +847,13 @@ JsonArrayHelper JsonArray::operator[]( JsonArray ja) {
     return JsonArrayHelper(ja);
 }    
 
+// Add implementation with JsonArray methods
+JsonArray JsonArray::operator[](const JsonObject& obj) {
+    JsonArray result;
+    result.add(obj);
+    return result;
+}
+
 template <typename DataType> 
 JsonArray JsonArray::operator,(const DataType& dt)
 {
@@ -705,11 +905,42 @@ JsonArray createArray() {
 // Utility macros
 #define SIZE_OF(value) JsonValue(value.size())
 #define IS_EMPTY(value) value.size() == 0
-#define HAS_KEY(object, key) object.hasKey(key)
+#define HAS_KEY(object, key) JsonValue(object.hasKey(key))
 #define TYPE_OF(value) value.getType()
 
 #define KEY(key) JsonValue(#key), 1 < 0 ? JsonValue(#key) 
-#define PRINT(value) ; value.print(); cout << "\n"; cout.flush();
+#define PRINT ;cout <<
+
+// Replace the existing pair operator with:
+inline ostream& operator<<(ostream& os, const pair<JsonValue, bool>& p) {
+    p.first.print();
+    os << (p.second ? "True" : "False") << endl;
+    return os;
+}
+
+inline ostream& operator,(ostream& os, const pair<JsonValue, bool>& p) {
+    p.first.print();
+    os << (p.second ? "True" : "False") << endl;
+    return os;
+}
+
+// Add comma operator to create pairs
+inline pair<JsonValue, bool> operator,(const JsonValue& str, bool b) {
+    return make_pair(str, b);
+}
+
+// Overload comma operator for printing HAS_KEY result
+ostream& operator,(ostream& os, const JsonValue& str) {
+    str.print();
+    os << endl;
+    return os;
+}
+
+// Handle direct string literal case
+ostream& operator,(ostream& os, const char* str) {
+    os << str << endl;
+    return os;
+}
 
 #define PROGRAM_BEGIN ; int main() {;
 #define PROGRAM_END ; return 0; }
