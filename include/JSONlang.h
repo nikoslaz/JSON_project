@@ -15,6 +15,13 @@ class JsonArrayHelper;
 //Class JsonValue
 class JsonValue {
 public:
+    // New fields to track parent and position
+    JsonValue* parentValue = nullptr;
+    string parentKey;
+    size_t parentIndex;
+    bool hasParentKey = false;  // true if we're tracking an object key
+    bool hasParentIndex = false; // true if we're tracking an array index
+
     enum class Type {String = 0, Number = 1, Boolean = 2, Null = 3, Object = 4, Array = 5} type;
 
     union {
@@ -37,6 +44,7 @@ public:
     JsonValue(const JsonArray& arr);
     JsonValue(const JsonValue& other);
     JsonValue(const JsonArrayHelper& jah);
+    JsonValue(size_t value); // Add new constructor for size_t
 
     //Destructor
     ~JsonValue();
@@ -45,6 +53,8 @@ public:
     void print() const;
     size_t size() const;
     string asString() const;
+    bool hasKey(const string& key) const;
+    Type getType() const { return type; }
 
     // Overloaded operators
     JsonValue& operator=(const JsonValue& other);
@@ -59,11 +69,31 @@ public:
 
     template <typename DataType>
     JsonArray operator,(const DataType& dt);
+
+    // Overload -- to erase from parent container
+    JsonValue& operator--();
+
+    JsonValue operator+(const JsonValue& other) const;
+
+private:
+    string typeToString(Type t) const {
+        switch(t) {
+            case Type::String: return "String";
+            case Type::Number: return "Number";
+            case Type::Boolean: return "Boolean";
+            case Type::Null: return "Null";
+            case Type::Object: return "Object";
+            case Type::Array: return "Array";
+            default: return "Unknown";
+        }
+    }
 };
 
 //Class JsonObject
 class JsonObject {
-    map<string, shared_ptr<JsonValue>> data;
+    friend class JsonValue;  // Allow JsonValue to access private members
+    // Replace map with vector of pairs
+    vector<pair<string, shared_ptr<JsonValue>>> data;
 
 public:
     JsonObject();
@@ -71,11 +101,60 @@ public:
     JsonObject(initializer_list<JsonValue> list);
 
     void add(const string& key, const JsonValue& value);
-    void print() const;
-    size_t size() const;
-    bool hasKey(const string& key) const;
 
-    JsonValue& operator[](const string& key);
+    // Print each pair
+    void print() const {
+        cout << "{ ";
+        for (auto it = data.begin(); it != data.end(); ++it) {
+            if (it != data.begin()) cout << ", ";
+            cout << "\"" << it->first << "\": ";
+            it->second->print();
+        }
+        cout << " }";
+    }
+
+    size_t size() const {
+        return data.size();
+    }
+
+    bool hasKey(const string& key) const {
+        // Scan the vector for matching key
+        for (auto& pair : data) {
+            if (pair.first == key) return true;
+        }
+        return false;
+    }
+
+    // If key not found, create a new pair
+    JsonValue& operator[](const string& key) {
+        for (auto& pair : data) {
+            if (pair.first == key) {
+                return *pair.second;
+            }
+        }
+        data.push_back({ key, make_shared<JsonValue>() });
+        auto& valRef = *data.back().second;
+        valRef.parentValue = reinterpret_cast<JsonValue*>(this);     // ‘this’ is a pointer to the JsonValue holding this object
+        valRef.parentKey = key;
+        valRef.hasParentKey = true;
+        return valRef;
+    }
+
+    // Removes a key if it exists
+    void removeKey(const string& key) {
+        for (auto it = data.begin(); it != data.end(); ++it) {
+            if (it->first == key) {
+                data.erase(it);
+                break;
+            }
+        }
+    }
+
+    // Clears all pairs
+    void clear() {
+        data.clear();
+    }
+
     JsonObject& operator=(const JsonObject& other);
 
     JsonArray operator,(const JsonValue& jv);
@@ -110,6 +189,13 @@ public:
 
     void print() const;
     size_t size() const;
+
+    void removeIndex(size_t index);
+
+    // Clears all elements
+    void clear() {
+        values.clear();
+    }
 };
 
 //Helper class that will enable chaining via operator[]
@@ -124,6 +210,11 @@ public:
 //JsonValue implementation
 JsonValue::JsonValue() {
     type = Type::Null;
+    data.stringValue = nullptr;
+}
+
+JsonValue::JsonValue(Type t) {
+    type = t;
     data.stringValue = nullptr;
 }
 
@@ -167,6 +258,11 @@ JsonValue::JsonValue(const JsonArrayHelper& jah)
     type = Type::Array;
     data.arrayValue = new JsonArray(jah.obj);
 }    
+
+JsonValue::JsonValue(size_t value) {
+    type = Type::Number;
+    data.numberValue = static_cast<double>(value);
+}
 
 JsonValue::JsonValue(const JsonValue& other) : type(other.type) {
     switch (type) {
@@ -235,6 +331,32 @@ size_t JsonValue::size() const {
 }
 
 void JsonValue::print() const {
+    // If this JsonValue contains a Type value (from TYPE_OF)
+    if (type == Type::String && data.stringValue == nullptr) {
+        cout << typeToString(Type::String);
+        return;
+    }
+    else if(type == Type::Object && data.stringValue == nullptr) {
+        cout << typeToString(Type::Object);
+        return;
+    }
+    else if(type == Type::Array && data.stringValue == nullptr) {
+        cout << typeToString(Type::Array);
+        return;
+    }
+    else if(type == Type::Number && data.stringValue == nullptr) {
+        cout << typeToString(Type::Number);
+        return;
+    }
+    else if(type == Type::Boolean && data.stringValue == nullptr) {
+        cout << typeToString(Type::Boolean);
+        return;
+    }
+    else if(type == Type::Null && data.stringValue == nullptr) {
+        cout << typeToString(Type::Null);
+        return;
+    }
+    
     switch (type) {
         case Type::String: cout << "\"" << *data.stringValue << "\""; break;
         case Type::Number: cout << data.numberValue; break;
@@ -245,12 +367,23 @@ void JsonValue::print() const {
     }
 }
 
+bool JsonValue::hasKey(const string& key) const {
+    if (type != Type::Object) {
+        return false;  // Only objects can have keys
+    }
+    return data.objectValue->hasKey(key);
+}
+
 JsonValue& JsonValue::operator[](const string& key) {
     if (type != Type::Object) {
         type = Type::Object;
         data.objectValue = new JsonObject();
     }
-    return (*data.objectValue)[key];
+    auto& valRef = (*data.objectValue)[key];
+    valRef.parentValue = this;     // ‘this’ is a pointer to the JsonValue holding this object
+    valRef.parentKey = key;
+    valRef.hasParentKey = true;
+    return valRef;
 }
 
 JsonValue& JsonValue::operator[](size_t index) {
@@ -258,7 +391,16 @@ JsonValue& JsonValue::operator[](size_t index) {
         type = Type::Array;
         data.arrayValue = new JsonArray();
     }
-    return (*data.arrayValue)[index];
+    auto& arr = *data.arrayValue;
+    // Auto-resize if index is out of range
+    while (arr.size() <= index) {
+        arr.add(JsonValue());
+    }
+    auto& valRef = arr[index];
+    valRef.parentValue = this;     // ‘this’ is a pointer to the JsonValue holding this array
+    valRef.parentIndex = index;
+    valRef.hasParentIndex = true;
+    return valRef;
 }
 
 // Overloading the assignment operator
@@ -343,6 +485,50 @@ JsonArray JsonValue::operator,(const DataType& dt)
     return ja;
 }
 
+JsonValue& JsonValue::operator--() {
+    if (parentValue && parentValue->type == Type::Object && hasParentKey) {
+        parentValue->data.objectValue->removeKey(parentKey);
+    } 
+    else if (parentValue && parentValue->type == Type::Array && hasParentIndex) {
+        parentValue->data.arrayValue->removeIndex(parentIndex);
+    } 
+    // If there's NO parent, just clear ourselves if we're an object or array
+    else if (!parentValue) {
+        if (type == Type::Object) {
+            data.objectValue->clear();
+        } else if (type == Type::Array) {
+            data.arrayValue->clear();
+        }
+    }
+    return *this;
+}
+
+JsonValue JsonValue::operator+(const JsonValue& other) const {
+    // Handle string concatenation
+    if (type == Type::String && other.type == Type::String) {
+        return JsonValue(*data.stringValue + *other.data.stringValue);
+    }
+    
+    // Handle array merging
+    if (type == Type::Array && other.type == Type::Array) {
+        JsonArray result(*data.arrayValue);
+        result.append(*other.data.arrayValue);
+        return JsonValue(result);
+    }
+    
+    // Handle object merging
+    if (type == Type::Object && other.type == Type::Object) {
+        JsonObject result(*data.objectValue);
+        // Now we can access data directly since JsonValue is a friend
+        for (const auto& pair : other.data.objectValue->data) {
+            result.add(pair.first, *pair.second);
+        }
+        return JsonValue(result);
+    }
+    
+    throw runtime_error("Error: operator+ only supports String+String, Array+Array, or Object+Object");
+}
+
 //-------------------------------------------------------------------------------------------------------------------------------------------//
 
 //JsonObject implementation
@@ -356,7 +542,7 @@ JsonObject::JsonObject(initializer_list<JsonValue> list)
         ++it;  
         if (it != list.end()) {
             const auto& value = *it;
-           data[key.asString()] = make_shared<JsonValue>(value);
+           data.push_back({ key.asString(), make_shared<JsonValue>(value) });
         }
         ++it; 
     }
@@ -367,29 +553,7 @@ JsonObject::JsonObject(const JsonObject& other) {
 }
 
 void JsonObject::add(const string& key, const JsonValue& value) {
-    data[key] = make_shared<JsonValue>(value);
-}
-
-void JsonObject::print() const {
-    cout << "{ ";
-    for (auto it = data.begin(); it != data.end(); ++it) {
-        if (it != data.begin()) cout << ", ";
-        cout << "\"" << it->first << "\": ";
-        it->second->print();
-    }
-    cout << " }";
-}
-
-size_t JsonObject::size() const {
-    return data.size();
-}
-
-bool JsonObject::hasKey(const string& key) const {
-    return data.find(key) != data.end();
-}
-
-JsonValue& JsonObject::operator[](const string& key) {
-    return *data[key];
+    data.push_back({ key, make_shared<JsonValue>(value) });
 }
 
 JsonObject& JsonObject::operator=(const JsonObject& other) {
@@ -478,7 +642,11 @@ size_t JsonArray::size() const {
 }
 
 JsonValue& JsonArray::operator[](size_t index) {
-    return *values[index];
+    auto& valRef = *values[index];
+    valRef.parentValue = reinterpret_cast<JsonValue*>(this);     // ‘this’ is a pointer to the JsonValue holding this array
+    valRef.parentIndex = index;
+    valRef.hasParentIndex = true;
+    return valRef;
 }
 
 // Overload operator[] to accept a JsonValue object and return the helper object for chaining
@@ -507,6 +675,12 @@ JsonArray& JsonArray::operator+=(const DataType& dt)
     return *this;
 }
 
+void JsonArray::removeIndex(size_t index) {
+    if (index < values.size()) {
+        values.erase(values.begin() + index);
+    }
+}
+
 JsonArray createArray() {
     return JsonArray();
 }
@@ -526,10 +700,10 @@ JsonArray createArray() {
 #define SET ;
 #define ASSIGN =
 #define APPEND +=
-#define ERASE(variable) ;variable = JsonValue(nullptr)
+#define ERASE ; --
 
 // Utility macros
-#define SIZE_OF(value) value.size()
+#define SIZE_OF(value) JsonValue(value.size())
 #define IS_EMPTY(value) value.size() == 0
 #define HAS_KEY(object, key) object.hasKey(key)
 #define TYPE_OF(value) value.getType()
