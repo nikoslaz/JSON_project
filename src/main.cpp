@@ -160,15 +160,37 @@ PRINT("\n")
 
 //5) Special case of +
 JSON(conc) = STRING("hello") + STRING(" world")
-PRINT("Special case of +: ")
+PRINT("Special case of + (1): ")
 PRINT(conc)
 PRINT("\n")
 
-// TODO
-// JSON(concarr) = ARRAY[NUMBER(1), NUMBER(2)] + ARRAY[NUMBER(3), NUMBER(4)]
-// PRINT("Special case of +: ")
-// PRINT(concarr)
-// PRINT("\n")
+JSON(fullName) = STRING("Nikos ") + STRING("Nikolaou")
+JSON(studentMessage) = STRING("Student: ")
+JSON(studentFullName) = studentMessage + students[0]["name"] + STRING(", ID: ") + STRING("4444")
+PRINT(studentFullName)
+PRINT("\n")
+
+//7) Array concatenation example
+JSON(arr1) = ARRAY[NUMBER(1), NUMBER(2)]
+JSON(arr2) = ARRAY[NUMBER(3), NUMBER(4)]
+JSON(combinedArray) = arr1 + arr2
+PRINT("Array concatenation example: ")
+PRINT(combinedArray)  //[ 1, 2, 3, 4 ]
+PRINT("\n")
+
+//8) Object concatenation example
+JSON(obj1) = OBJECT {
+    KEY(name) : STRING("John"),
+    KEY(age) : NUMBER(30)
+}
+JSON(obj2) = OBJECT {
+    KEY(city) : STRING("New York"),
+    KEY(country) : STRING("USA")
+}
+JSON(combinedObject) = obj1 + obj2
+PRINT("Object concatenation example: ")
+PRINT(combinedObject)  //{ "name": "John", "age": 30, "city": "New York", "country": "USA" }
+PRINT("\n")
 
 JSON(hy352_nik) = OBJECT{ KEY(exam):NUMBER(7), KEY(project):NUMBER(8) }
 JSON(students) = ARRAY [ 
@@ -208,55 +230,97 @@ PRINT("OBJECT{KEY(a): NUMBER(1)} == OBJECT{KEY(a): NUMBER(1)} = ")
 PRINT(logo)
 PRINT("\n")
 
-//TODO ADD (&&, ||, !)
+JSON(and_result) = (NUMBER(5) > NUMBER(3)) && (NUMBER(10) < NUMBER(20))  // true
+PRINT("Logical AND example (5>3 && 10<20) = ")
+PRINT(and_result)
+PRINT("\n")
 
-// 5. String concatenation
-// JSON(fullName) = STRING("Nikos ") + STRING("Nikolaou")
-// JSON(studentMessage) = STRING("Student: ") + students[0]["name"] + STRING(", ID: ") + NUMBER(4444)
+JSON(or_result) = (NUMBER(5) < NUMBER(3)) || (NUMBER(10) < NUMBER(20))  // true
+PRINT("Logical OR example (5<3 || 10<20) = ")
+PRINT(or_result)
+PRINT("\n")
 
-// 6. Logical operators
-// JSON(isAdult) = students[0]["author"]["age"] >= NUMBER(18)
-// JSON(containsGrades) = HAS_KEY(students[0], "grades")
+JSON(not_result) = !(NUMBER(5) < NUMBER(3))  // true
+PRINT("Logical NOT example !(5<3) = ")
+PRINT(not_result)
+PRINT("\n")
 
-// // 7. Array and object operations
-// JSON(isWeekTemperaturesEmpty) = IS_EMPTY(emptyObj)
-// JSON(studentCount) = SIZE_OF(book)
-// JSON(weekTemperatureType) = TYPE_OF(book)
-// JSON(studentNameType) = TYPE_OF(students[0]["name"])
+JSON(complex_logic) = ((NUMBER(5) > NUMBER(3)) && (NUMBER(10) < NUMBER(20))) || !(NUMBER(7) == NUMBER(8))  // true
+PRINT("Complex logical expression ((5>3 && 10<20) || !(7==8)) = ")
+PRINT(complex_logic)
+PRINT("\n")
 
-// 8. Use of SIZE_OF
-// JSON(studentGradesSize) = SIZE_OF(students[0]["grades"])
-// JSON(bookSize) = SIZE_OF(book)
+// 6) Utility functions examples
+// SIZE_OF examples
+JSON(arraySize) = SIZE_OF(week_temperatures)
+PRINT("Size of week_temperatures array: ")
+PRINT(arraySize)
+PRINT("\n")
 
-// 9. Comparing JSON objects and arrays
-// JSON(areArraysEqual) = (week_temperatures == ARRAY [NUMBER(20), NUMBER(19.5), NUMBER(19), NUMBER(20),
-//                                                     NUMBER(19), NUMBER(18.5), NUMBER(19)])
+JSON(objectSize) = SIZE_OF(book)
+PRINT("Size of book object: ")
+PRINT(objectSize)
+PRINT("\n")
 
-// 10. Print statements
-// PRINT(book)
-// PRINT(week_temperatures)
-//PRINT(students)
-// PRINT(emptyObj)
-// PRINT(fullName)
-// PRINT(studentMesIsage)
-// PRINT(isAdult)
-//PRINT(containsGrades)
-// PRINT(studentCount)
-// PRINT(isWeekTemperaturesEmpty)
-// PRINT(weekTemperatureType)
-// PRINT(studentNameType)
-// PRINT(studentGradesSize)
-// PRINT(bookSize)
-// PRINT(areArraysEqual)
-//PRINT(totalGrades)
-//PRINT(hy352_nik)
-// PRINT book["title"] //prints:Gone Girl
-// PRINT book["author"] //prints:{firstname:”Gillian”,sirname:“Flynn”,age: 45}
-// PRINT book //prints: the whole json for book
-// PRINT HAS_KEY(book, "author") //z
-// PRINT STRING("Book has key author? "), HAS_KEY(book, "author")
+// IS_EMPTY examples
+JSON(isEmptyArray) = IS_EMPTY(emptyArray)
+PRINT("Is emptyArray empty? ")
+PRINT(isEmptyArray)
+PRINT("\n")
+
+JSON(isEmptyObject) = IS_EMPTY(emptyObj)
+PRINT("Is emptyObj empty? ")
+PRINT(isEmptyObject)
+PRINT("\n")
+
+// HAS_KEY examples
+JSON(hasTitle) = HAS_KEY(book, "title")
+PRINT("Does book have 'title' key? ")
+PRINT(hasTitle)
+PRINT("\n")
+
+JSON(hasAuthor) = HAS_KEY(book, "author")
+PRINT("Does book have 'author' key? ")
+PRINT(hasAuthor)
+PRINT("\n")
+
+// TYPE_OF examples
+JSON(tempType) = TYPE_OF(week_temperatures)
+PRINT("Type of week_temperatures: ")
+PRINT(tempType)
+PRINT("\n")
+
+JSON(bookType) = TYPE_OF(book)
+PRINT("Type of book: ")
+PRINT(bookType)
+PRINT("\n")
+
+JSON(nameType) = TYPE_OF(students[0]["name"])
+PRINT("Type of student name: ")
+PRINT(nameType)
+PRINT("\n")
+
+//6) Print example
+JSON(book2) = OBJECT {
+    KEY(title) : STRING("Gone Girl"),
+    KEY(published) : NUMBER(2012),
+    KEY(type) : STRING("Thriller"),
+    KEY(author) : OBJECT {
+        KEY(firstname) : STRING("Gillian"),
+        KEY(sirname) : STRING("Flynn"),
+        KEY(age) : NUMBER(45)
+    }
+}
+
+PRINT book2["title"] //prints:Gone Girl
+PRINT("\n")
+PRINT book2["author"] //prints:{firstname:”Gillian”,sirname:“Flynn”,age: 45}
+PRINT("\n")
+PRINT book2 //prints: the whole json for book
+PRINT("\n")
+PRINT HAS_KEY(book2, "author") //prints: true
+PRINT("\n")
 //prints: Book has key author? True
-// PRINT STRING("Book has key author? "), HAS_KEY(book, "author")
-
+PRINT STRING("Book has key author? "), HAS_KEY(book2, "author")
 
 PROGRAM_END

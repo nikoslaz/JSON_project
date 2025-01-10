@@ -7,7 +7,7 @@
 #include <memory>
 #include <stdexcept>
 #include <map>
-#include <cmath> // Include cmath for fmod
+#include <cmath>
 
 using namespace std;
 
@@ -16,20 +16,19 @@ class JsonArrayHelper;
 //Class JsonValue
 class JsonValue {
 public:
-    // New fields to track parent and position
-    JsonValue* parentValue = nullptr;
-    string parentKey;
-    size_t parentIndex;
-    bool hasParentKey = false;  // true if we're tracking an object key
-    bool hasParentIndex = false; // true if we're tracking an array index
+    JsonValue* parent_value = nullptr;
+    string parent_key;
+    size_t parent_index;
+    bool hasparent_key = false;   // if it's true then we're tracking an object key
+    bool hasparent_index = false; // if it's true then we're tracking an array index
 
     enum class Type {String = 0, Number = 1, Boolean = 2, Null = 3, Object = 4, Array = 5} type;
 
     union {
-        string* stringValue;
-        double numberValue;
-        bool boolValue;
-        class JsonObject* objectValue;
+        string* string_value;
+        double number_value;
+        bool bool_value;
+        class JsonObject* object_value;
         class JsonArray* arrayValue;  
     } data;
 
@@ -45,7 +44,7 @@ public:
     JsonValue(const JsonArray& arr);
     JsonValue(const JsonValue& other);
     JsonValue(const JsonArrayHelper& jah);
-    JsonValue(size_t value); // Add new constructor for size_t
+    JsonValue(size_t value);
 
     //Destructor
     ~JsonValue();
@@ -71,7 +70,6 @@ public:
     template <typename DataType>
     JsonArray operator,(const DataType& dt);
 
-    // Overload -- to erase from parent container
     JsonValue& operator--();
 
     JsonValue operator+(const JsonValue& other) const;
@@ -80,22 +78,18 @@ public:
     JsonValue operator/(const JsonValue& other) const;
     JsonValue operator%(const JsonValue& other) const;
 
-    // Relational operators
     bool operator>(const JsonValue& other) const;
     bool operator>=(const JsonValue& other) const;
     bool operator<(const JsonValue& other) const;
     bool operator<=(const JsonValue& other) const;
 
-    // Logical operators
     JsonValue operator&&(const JsonValue& other) const;
     JsonValue operator||(const JsonValue& other) const;
     JsonValue operator!() const;
 
-    // Equality operators
     bool operator==(const JsonValue& other) const;
     bool operator!=(const JsonValue& other) const;
 
-    // Add this in the JsonValue class public section
     friend ostream& operator<<(ostream& os, const JsonValue& jv) {
         jv.print();
         return os << endl;
@@ -123,8 +117,7 @@ bool operator!=(const JsonArray& lhs, const JsonArray& rhs);
 
 //Class JsonObject
 class JsonObject {
-    friend class JsonValue;  // Allow JsonValue to access private members
-    // Replace map with vector of pairs
+    friend class JsonValue;  // With friend allows JsonValue to access private members
     vector<pair<string, shared_ptr<JsonValue>>> data;
 
 public:
@@ -149,8 +142,8 @@ public:
         return data.size();
     }
 
+    // Try to find key
     bool hasKey(const string& key) const {
-        // Scan the vector for matching key
         for (auto& pair : data) {
             if (pair.first == key) return true;
         }
@@ -166,9 +159,9 @@ public:
         }
         data.push_back({ key, make_shared<JsonValue>() });
         auto& valRef = *data.back().second;
-        valRef.parentValue = reinterpret_cast<JsonValue*>(this);     // ‘this’ is a pointer to the JsonValue holding this object
-        valRef.parentKey = key;
-        valRef.hasParentKey = true;
+        valRef.parent_value = reinterpret_cast<JsonValue*>(this); // convert one pointer type to another pointer type
+        valRef.parent_key = key;
+        valRef.hasparent_key = true;
         return valRef;
     }
 
@@ -220,8 +213,15 @@ public:
     template <typename DataType>
     JsonArray operator,(const DataType& dt);
 
-    // Add new operator declaration
     JsonArray operator[](const JsonObject& obj);
+
+    JsonValue operator[](initializer_list<JsonValue> init_list) {
+        JsonArray tmp;
+        for (auto &v : init_list) {
+            tmp.add(v);
+        }
+        return JsonValue(tmp);
+    }
 
     void print() const;
     size_t size() const;
@@ -231,6 +231,12 @@ public:
     // Clears all elements
     void clear() {
         values.clear();
+    }
+
+    JsonArray operator+(const JsonArray& other) const {
+        JsonArray result(*this);
+        result.append(other);
+        return result;
     }
 };
 
@@ -246,42 +252,65 @@ public:
 //JsonValue implementation
 JsonValue::JsonValue() {
     type = Type::Null;
-    data.stringValue = nullptr;
+    data.string_value = nullptr;
 }
 
+// Update JsonValue constructor for Type
 JsonValue::JsonValue(Type t) {
-    type = t;
-    data.stringValue = nullptr;
+    type = Type::String;  // We'll store the type name as a string
+    switch(t) {
+        case Type::String:
+            data.string_value = new string("String");
+            break;
+        case Type::Number:
+            data.string_value = new string("Number");
+            break;
+        case Type::Boolean:
+            data.string_value = new string("Boolean");
+            break;
+        case Type::Object:
+            data.string_value = new string("Object");
+            break;
+        case Type::Array:
+            data.string_value = new string("Array");
+            break;
+        case Type::Null:
+            data.string_value = new string("Null");
+            break;
+        default:
+            data.string_value = new string("Unknown");
+            break;
+    }
 }
 
 JsonValue::JsonValue(const string& value) {
     type = Type::String;
-    data.stringValue = new string(value);
+    data.string_value = new string(value);
 }
 
 JsonValue::JsonValue(const char* value) {
     type = Type::String;
-    data.stringValue = new string(value);
+    data.string_value = new string(value);
 }
 
 JsonValue::JsonValue(double value) {
     type = Type::Number;
-    data.numberValue = value;
+    data.number_value = value;
 }
 
 JsonValue::JsonValue(bool value) {
     type = Type::Boolean;
-    data.boolValue = value;
+    data.bool_value = value;
 }
 
 JsonValue::JsonValue(nullptr_t) {
     type = Type::Null;
-    data.stringValue = nullptr;
+    data.string_value = nullptr;
 }
 
 JsonValue::JsonValue(const JsonObject& obj) {
     type = Type::Object;
-    data.objectValue = new JsonObject(obj);
+    data.object_value = new JsonObject(obj);
 }
 
 JsonValue::JsonValue(const JsonArray& arr) {
@@ -297,28 +326,28 @@ JsonValue::JsonValue(const JsonArrayHelper& jah)
 
 JsonValue::JsonValue(size_t value) {
     type = Type::Number;
-    data.numberValue = static_cast<double>(value);
+    data.number_value = static_cast<double>(value);
 }
 
 JsonValue::JsonValue(const JsonValue& other) : type(other.type) {
     switch (type) {
         case Type::String:
-            data.stringValue = new string(*other.data.stringValue);
+            data.string_value = new string(*other.data.string_value);
             break;
         case Type::Number:
-            data.numberValue = other.data.numberValue;
+            data.number_value = other.data.number_value;
             break;
         case Type::Boolean:
-            data.boolValue = other.data.boolValue;
+            data.bool_value = other.data.bool_value;
             break;
         case Type::Object:
-            data.objectValue = new JsonObject(*other.data.objectValue);
+            data.object_value = new JsonObject(*other.data.object_value);
             break;
         case Type::Array:
             data.arrayValue = new JsonArray(*other.data.arrayValue);
             break;
         case Type::Null:
-            data.stringValue = nullptr;
+            data.string_value = nullptr;
             break;
     }
 }
@@ -327,21 +356,21 @@ JsonValue::JsonValue(const JsonValue& other) : type(other.type) {
 JsonValue::~JsonValue() {
     switch (type) {
         case Type::String:
-            if (data.stringValue) {
-                delete data.stringValue;
-                data.stringValue = nullptr;  // Set to nullptr after deletion
+            if (data.string_value) {
+                delete data.string_value;
+                data.string_value = nullptr;
             }
             break;
         case Type::Object:
-            if (data.objectValue) {
-                delete data.objectValue;
-                data.objectValue = nullptr;  // Set to nullptr after deletion
+            if (data.object_value) {
+                delete data.object_value;
+                data.object_value = nullptr;
             }
             break;
         case Type::Array:
             if (data.arrayValue) {
                 delete data.arrayValue;
-                data.arrayValue = nullptr;  // Set to nullptr after deletion
+                data.arrayValue = nullptr;
             }
             break;
         default:
@@ -353,72 +382,96 @@ JsonValue::~JsonValue() {
 
 string JsonValue::asString() const {
     if (type == Type::String) {
-        return *data.stringValue;
+        return *data.string_value;
     }
     return "";
 }
 
 size_t JsonValue::size() const {
     switch (type) {
-        case Type::Object: return data.objectValue->size();
+        case Type::Object: return data.object_value->size();
         case Type::Array: return data.arrayValue->size();
         default: return 1;
     }
 }
 
+// Update print method
 void JsonValue::print() const {
-    // If this JsonValue contains a Type value (from TYPE_OF)
-    if (type == Type::String && data.stringValue == nullptr) {
+    if (type == Type::String && data.string_value) {
+        cout << *data.string_value;  // Print the string value directly
+        return;
+    }
+    
+    // Handle TYPE_OF cases
+    if (type == Type::String && data.string_value == nullptr) {
         cout << typeToString(Type::String);
         return;
     }
-    else if(type == Type::Object && data.stringValue == nullptr) {
+    else if(type == Type::Object && data.string_value == nullptr) {
         cout << typeToString(Type::Object);
         return;
     }
-    else if(type == Type::Array && data.stringValue == nullptr) {
+    else if(type == Type::Array && data.string_value == nullptr) {
         cout << typeToString(Type::Array);
         return;
     }
-    else if(type == Type::Number && data.stringValue == nullptr) {
+    else if(type == Type::Number && data.string_value == nullptr) {
         cout << typeToString(Type::Number);
         return;
     }
-    else if(type == Type::Boolean && data.stringValue == nullptr) {
+    else if(type == Type::Boolean && data.string_value == nullptr) {
         cout << typeToString(Type::Boolean);
         return;
     }
-    else if(type == Type::Null && data.stringValue == nullptr) {
+    else if(type == Type::Null && data.string_value == nullptr) {
         cout << typeToString(Type::Null);
         return;
     }
     
+    // Normal value printing
     switch (type) {
-        case Type::String: cout << "\"" << *data.stringValue << "\""; break;
-        case Type::Number: cout << data.numberValue; break;
-        case Type::Boolean: cout << (data.boolValue ? "true" : "false"); break;
-        case Type::Null: cout << "null"; break;
-        case Type::Object: data.objectValue->print(); break;
-        case Type::Array: data.arrayValue->print(); break;
+        case Type::String: 
+            cout << "\"" << *data.string_value << "\""; 
+            break;
+        case Type::Number: 
+            // Print integers without decimal point
+            if (floor(data.number_value) == data.number_value) {
+                cout << static_cast<long long>(data.number_value);
+            } else {
+                cout << data.number_value;
+            }
+            break;
+        case Type::Boolean: 
+            cout << (data.bool_value ? "true" : "false"); 
+            break;
+        case Type::Null: 
+            cout << "null"; 
+            break;
+        case Type::Object: 
+            data.object_value->print(); 
+            break;
+        case Type::Array: 
+            data.arrayValue->print(); 
+            break;
     }
 }
 
 bool JsonValue::hasKey(const string& key) const {
     if (type != Type::Object) {
-        return false;  // Only objects can have keys
+        return false; // We search objects for key
     }
-    return data.objectValue->hasKey(key);
+    return data.object_value->hasKey(key);
 }
 
 JsonValue& JsonValue::operator[](const string& key) {
     if (type != Type::Object) {
         type = Type::Object;
-        data.objectValue = new JsonObject();
+        data.object_value = new JsonObject();
     }
-    auto& valRef = (*data.objectValue)[key];
-    valRef.parentValue = this;     // ‘this’ is a pointer to the JsonValue holding this object
-    valRef.parentKey = key;
-    valRef.hasParentKey = true;
+    auto& valRef = (*data.object_value)[key];
+    valRef.parent_value = this;     // ‘this’ is a pointer to the JsonValue holding this object
+    valRef.parent_key = key;
+    valRef.hasparent_key = true;
     return valRef;
 }
 
@@ -428,75 +481,74 @@ JsonValue& JsonValue::operator[](size_t index) {
         data.arrayValue = new JsonArray();
     }
     auto& arr = *data.arrayValue;
+
     // Auto-resize if index is out of range
     while (arr.size() <= index) {
         arr.add(JsonValue());
     }
     auto& valRef = arr[index];
-    valRef.parentValue = this;     // ‘this’ is a pointer to the JsonValue holding this array
-    valRef.parentIndex = index;
-    valRef.hasParentIndex = true;
+    valRef.parent_value = this;     // ‘this’ is a pointer to the JsonValue holding this array
+    valRef.parent_index = index;
+    valRef.hasparent_index = true;
     return valRef;
 }
 
-// Overloading the assignment operator
 JsonValue& JsonValue::operator=(const JsonValue& other) {
-    cout << "~\n";
+    cout << "~\n"; // Standard output
     if (this == &other) {
         return *this; // Handle self-assignment
     }
 
     cout << (int) type;
     cout.flush();
-    // First, clean up the current object
+
+    // Clean up the current object
     JsonValue::~JsonValue();
 
-    // Copy the data from `other`
+    // Copy the data from the other
     type = other.type;
     switch (type) {
         case Type::String:
-            data.stringValue = new string(*other.data.stringValue);
+            data.string_value = new string(*other.data.string_value);
             break;
         case Type::Number:
-            data.numberValue = other.data.numberValue;
+            data.number_value = other.data.number_value;
             break;
         case Type::Boolean:
-            data.boolValue = other.data.boolValue;
+            data.bool_value = other.data.bool_value;
             break;
         case Type::Object:
-            data.objectValue = new JsonObject(*other.data.objectValue);
+            data.object_value = new JsonObject(*other.data.object_value);
             break;
         case Type::Array:
             data.arrayValue = new JsonArray(*other.data.arrayValue);
             break;
         case Type::Null:
-            data.stringValue = nullptr;
+            data.string_value = nullptr;
             break;
     }
 
     return *this;
 }
 
-// Overloading the assignment operator
 JsonValue& JsonValue::operator=(const JsonObject& other) {
 
-    // First, clean up the current object
+    // Clean up the current object
     JsonValue::~JsonValue();
 
-    // Copy the data from `other`
+    // Copy the data from the other
     type = Type::Object;
-    data.objectValue = new JsonObject(other);
+    data.object_value = new JsonObject(other);
 
     return *this;
 }
 
-// Overloading the assignment operator
 JsonValue& JsonValue::operator=(const JsonArray& other) {
 
-    // First, clean up the current object
+    // Clean up the current object
     JsonValue::~JsonValue();
 
-    // Copy the data from `other`
+    // Copy the data from the other
     type = Type::Array;
     data.arrayValue = new JsonArray(other);
 
@@ -522,16 +574,16 @@ JsonArray JsonValue::operator,(const DataType& dt)
 }
 
 JsonValue& JsonValue::operator--() {
-    if (parentValue && parentValue->type == Type::Object && hasParentKey) {
-        parentValue->data.objectValue->removeKey(parentKey);
+    if (parent_value && parent_value->type == Type::Object && hasparent_key) {
+        parent_value->data.object_value->removeKey(parent_key);
     } 
-    else if (parentValue && parentValue->type == Type::Array && hasParentIndex) {
-        parentValue->data.arrayValue->removeIndex(parentIndex);
+    else if (parent_value && parent_value->type == Type::Array && hasparent_index) {
+        parent_value->data.arrayValue->removeIndex(parent_index);
     } 
     // If there's NO parent, just clear ourselves if we're an object or array
-    else if (!parentValue) {
+    else if (!parent_value) {
         if (type == Type::Object) {
-            data.objectValue->clear();
+            data.object_value->clear();
         } else if (type == Type::Array) {
             data.arrayValue->clear();
         }
@@ -542,12 +594,12 @@ JsonValue& JsonValue::operator--() {
 JsonValue JsonValue::operator+(const JsonValue& other) const {
     // Handle number addition
     if (type == Type::Number && other.type == Type::Number) {
-        return JsonValue(data.numberValue + other.data.numberValue);
+        return JsonValue(data.number_value + other.data.number_value);
     }
     
     // Handle string concatenation
     if (type == Type::String && other.type == Type::String) {
-        return JsonValue(*data.stringValue + *other.data.stringValue);
+        return JsonValue(*data.string_value + *other.data.string_value);
     }
     
     // Handle array merging
@@ -559,8 +611,8 @@ JsonValue JsonValue::operator+(const JsonValue& other) const {
     
     // Handle object merging
     if (type == Type::Object && other.type == Type::Object) {
-        JsonObject result(*data.objectValue);
-        for (const auto& pair : other.data.objectValue->data) {
+        JsonObject result(*data.object_value);
+        for (const auto& pair : other.data.object_value->data) {
             result.add(pair.first, *pair.second);
         }
         return JsonValue(result);
@@ -573,86 +625,85 @@ JsonValue JsonValue::operator-(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator- only supports Number-Number");
     }
-    return JsonValue(data.numberValue - other.data.numberValue);
+    return JsonValue(data.number_value - other.data.number_value);
 }
 
 JsonValue JsonValue::operator*(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator* only supports Number-Number");
     }
-    return JsonValue(data.numberValue * other.data.numberValue);
+    return JsonValue(data.number_value * other.data.number_value);
 }
 
 JsonValue JsonValue::operator/(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator/ only supports Number-Number");
     }
-    if (other.data.numberValue == 0) {
+    if (other.data.number_value == 0) {
         throw runtime_error("Error: division by zero");
     }
-    return JsonValue(data.numberValue / other.data.numberValue);
+    return JsonValue(data.number_value / other.data.number_value);
 }
 
 JsonValue JsonValue::operator%(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator% only supports Number-Number");
     }
-    if (other.data.numberValue == 0) {
+    if (other.data.number_value == 0) {
         throw runtime_error("Error: modulo by zero");
     }
-    return JsonValue(fmod(data.numberValue, other.data.numberValue));
+    return JsonValue(fmod(data.number_value, other.data.number_value));
 }
 
 bool JsonValue::operator>(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator> only supports Number-Number");
     }
-    return data.numberValue > other.data.numberValue;
+    return data.number_value > other.data.number_value;
 }
 
 bool JsonValue::operator>=(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator>= only supports Number-Number");
     }
-    return data.numberValue >= other.data.numberValue;
+    return data.number_value >= other.data.number_value;
 }
 
 bool JsonValue::operator<(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator< only supports Number-Number");
     }
-    return data.numberValue < other.data.numberValue;
+    return data.number_value < other.data.number_value;
 }
 
 bool JsonValue::operator<=(const JsonValue& other) const {
     if (type != Type::Number || other.type != Type::Number) {
         throw runtime_error("Error: operator<= only supports Number-Number");
     }
-    return data.numberValue <= other.data.numberValue;
+    return data.number_value <= other.data.number_value;
 }
 
 JsonValue JsonValue::operator&&(const JsonValue& other) const {
     if (type != Type::Boolean || other.type != Type::Boolean) {
         throw runtime_error("Error: operator&& only supports Boolean&&Boolean");
     }
-    return JsonValue(data.boolValue && other.data.boolValue);
+    return JsonValue(data.bool_value && other.data.bool_value);
 }
 
 JsonValue JsonValue::operator||(const JsonValue& other) const {
     if (type != Type::Boolean || other.type != Type::Boolean) {
         throw runtime_error("Error: operator|| only supports Boolean||Boolean");
     }
-    return JsonValue(data.boolValue || other.data.boolValue);
+    return JsonValue(data.bool_value || other.data.bool_value);
 }
 
 JsonValue JsonValue::operator!() const {
     if (type != Type::Boolean) {
         throw runtime_error("Error: operator! only supports Boolean values");
     }
-    return JsonValue(!data.boolValue);
+    return JsonValue(!data.bool_value);
 }
 
-// Add implementations after other JsonValue methods
 bool JsonValue::operator==(const JsonValue& other) const {
     if (type != other.type) {
         return false;
@@ -660,13 +711,13 @@ bool JsonValue::operator==(const JsonValue& other) const {
 
     switch (type) {
         case Type::String:
-            return *data.stringValue == *other.data.stringValue;
+            return *data.string_value == *other.data.string_value;
         case Type::Number:
-            return data.numberValue == other.data.numberValue;
+            return data.number_value == other.data.number_value;
         case Type::Boolean:
-            return data.boolValue == other.data.boolValue;
+            return data.bool_value == other.data.bool_value;
         case Type::Null:
-            return true;  // All null values are equal
+            return true;
         case Type::Array:
             if (data.arrayValue->size() != other.data.arrayValue->size()) {
                 return false;
@@ -679,13 +730,13 @@ bool JsonValue::operator==(const JsonValue& other) const {
             }
             return true;
         case Type::Object:
-            if (data.objectValue->size() != other.data.objectValue->size()) {
+            if (data.object_value->size() != other.data.object_value->size()) {
                 return false;
             }
             // Compare each key-value pair recursively
-            for (const auto& pair : data.objectValue->data) {
+            for (const auto& pair : data.object_value->data) {
                 bool found = false;
-                for (const auto& other_pair : other.data.objectValue->data) {
+                for (const auto& other_pair : other.data.object_value->data) {
                     if (pair.first == other_pair.first) {
                         if (!(*pair.second == *other_pair.second)) {
                             return false;
@@ -705,7 +756,6 @@ bool JsonValue::operator!=(const JsonValue& other) const {
     return !(*this == other);
 }
 
-// Add implementations after JsonValue methods
 bool operator==(const JsonObject& lhs, const JsonObject& rhs) {
     return JsonValue(lhs) == JsonValue(rhs);
 }
@@ -836,9 +886,9 @@ size_t JsonArray::size() const {
 
 JsonValue& JsonArray::operator[](size_t index) {
     auto& valRef = *values[index];
-    valRef.parentValue = reinterpret_cast<JsonValue*>(this);     // ‘this’ is a pointer to the JsonValue holding this array
-    valRef.parentIndex = index;
-    valRef.hasParentIndex = true;
+    valRef.parent_value = reinterpret_cast<JsonValue*>(this);     // ‘this’ is a pointer to the JsonValue holding this array
+    valRef.parent_index = index;
+    valRef.hasparent_index = true;
     return valRef;
 }
 
@@ -847,7 +897,6 @@ JsonArrayHelper JsonArray::operator[]( JsonArray ja) {
     return JsonArrayHelper(ja);
 }    
 
-// Add implementation with JsonArray methods
 JsonArray JsonArray::operator[](const JsonObject& obj) {
     JsonArray result;
     result.add(obj);
@@ -887,6 +936,36 @@ JsonArray createArray() {
 
 //-------------------------------------------------------------------------------------------------------------------------------------------//
 
+//Handle << overload with all cases
+inline ostream& operator<<(ostream& os, const pair<JsonValue, bool>& p) {
+    p.first.print();
+    os << (p.second ? "True" : "False") << endl;
+    return os;
+}
+
+inline ostream& operator,(ostream& os, const pair<JsonValue, bool>& p) {
+    p.first.print();
+    os << (p.second ? "True" : "False") << endl;
+    return os;
+}
+
+inline pair<JsonValue, bool> operator,(const JsonValue& str, bool b) {
+    return make_pair(str, b);
+}
+
+ostream& operator,(ostream& os, const JsonValue& str) {
+    str.print();
+    os << endl;
+    return os;
+}
+
+ostream& operator,(ostream& os, const char* str) {
+    os << str << endl;
+    return os;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------------//
+
 #define JSON(name) ;JsonValue name
 #define STRING(value) JsonValue(value)
 #define NUMBER(value) JsonValue(static_cast<double>(value))
@@ -903,44 +982,14 @@ JsonArray createArray() {
 #define ERASE ; --
 
 // Utility macros
-#define SIZE_OF(value) JsonValue(value.size())
-#define IS_EMPTY(value) value.size() == 0
-#define HAS_KEY(object, key) JsonValue(object.hasKey(key))
-#define TYPE_OF(value) value.getType()
+#define SIZE_OF(value) JsonValue(static_cast<double>(value.size()))  // Return NUMBER type
+#define IS_EMPTY(value) (value.size() == 0 ? "true" : "false")  // Return proper boolean JSON
+#define HAS_KEY(object, key) (object.hasKey(key) ? "true" : "false")  // Return proper boolean JSON
+// Update TYPE_OF macro
+#define TYPE_OF(value) JsonValue((value).getType())
 
 #define KEY(key) JsonValue(#key), 1 < 0 ? JsonValue(#key) 
 #define PRINT ;cout <<
-
-// Replace the existing pair operator with:
-inline ostream& operator<<(ostream& os, const pair<JsonValue, bool>& p) {
-    p.first.print();
-    os << (p.second ? "True" : "False") << endl;
-    return os;
-}
-
-inline ostream& operator,(ostream& os, const pair<JsonValue, bool>& p) {
-    p.first.print();
-    os << (p.second ? "True" : "False") << endl;
-    return os;
-}
-
-// Add comma operator to create pairs
-inline pair<JsonValue, bool> operator,(const JsonValue& str, bool b) {
-    return make_pair(str, b);
-}
-
-// Overload comma operator for printing HAS_KEY result
-ostream& operator,(ostream& os, const JsonValue& str) {
-    str.print();
-    os << endl;
-    return os;
-}
-
-// Handle direct string literal case
-ostream& operator,(ostream& os, const char* str) {
-    os << str << endl;
-    return os;
-}
 
 #define PROGRAM_BEGIN ; int main() {;
 #define PROGRAM_END ; return 0; }
