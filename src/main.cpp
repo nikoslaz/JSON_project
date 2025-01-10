@@ -68,8 +68,8 @@ PRINT(emptyObj)
 PRINT("\n")
 
 //Print emptyArray
-PRINT("Empty object: ")
-PRINT(emptyObj)
+PRINT("Empty array: ")
+PRINT(emptyArray)
 PRINT("\n")
 
 //Print book
